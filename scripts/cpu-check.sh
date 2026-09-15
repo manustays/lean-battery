@@ -11,4 +11,8 @@ top -pid "$pid" -stats cpu,idlew,mem -l "$((samples + 1))" -s 1 | awk '
 		lastWakeups = $2
 		memory = $3
 	}
-	END { printf "samples=%d mean_cpu=%.2f%% idle_wakeups_per_min=%.1f memory=%s\n", count, cpu / count, (lastWakeups - firstWakeups) / count * 60, memory }'
+	END {
+		if (count == 0) { print "no samples collected (did SlimBattery exit?)" > "/dev/stderr"; exit 1 }
+		sub(/[+-]$/, "", memory)
+		printf "samples=%d mean_cpu=%.2f%% idle_wakeups_per_min=%.1f memory=%s\n", count, cpu / count, (lastWakeups - firstWakeups) / count * 60, memory
+	}'
