@@ -10,13 +10,14 @@ final class StatusIcon {
 	private var drawnDark: Bool?
 	private var appearanceObservation: NSKeyValueObservation?
 
-	/// Creates the status item with a temporary Quit menu.
+	/// Creates the status item with a temporary Quit menu, showing a "—" placeholder until real battery data arrives.
 	init() {
 		// ponytail: Quit-only menu until the popover replaces it (Plan 2).
 		let menu = NSMenu()
 		menu.addItem(withTitle: "Quit SlimBattery", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 		statusItem.menu = menu
-		statusItem.button?.imagePosition = .imageOnly
+		statusItem.button?.title = "—"
+		statusItem.button?.setAccessibilityLabel("Battery status unavailable")
 		appearanceObservation = statusItem.button?.observe(\.effectiveAppearance) { [weak self] _, _ in
 			guard let self else { return }
 			MainActor.assumeIsolated { self.redrawIfNeeded() }
@@ -39,6 +40,8 @@ final class StatusIcon {
 		drawnSpec = spec
 		drawnDark = isDark
 		button.image = Self.image(for: spec, isDark: isDark)
+		button.title = ""
+		button.imagePosition = .imageOnly
 	}
 
 	/// Builds an NSImage with 1× and 2× bitmap representations.

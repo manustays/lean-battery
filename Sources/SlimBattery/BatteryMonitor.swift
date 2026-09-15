@@ -27,6 +27,7 @@ final class BatteryMonitor {
 			CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
 		}
 		observe(NotificationCenter.default, .NSProcessInfoPowerStateDidChange)
+		// ponytail: no explicit timer reschedule on wake — an overdue repeating Timer fires on wake and this refresh re-reads everything.
 		observe(NSWorkspace.shared.notificationCenter, NSWorkspace.didWakeNotification)
 		// Temperature has no change notification; a lax 60s timer lets macOS coalesce wakeups.
 		let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in

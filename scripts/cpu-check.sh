@@ -4,7 +4,7 @@
 # Usage: scripts/cpu-check.sh [samples]   (default 600 = 10 minutes)
 set -eu
 samples="${1:-600}"
-pid="$(pgrep -x SlimBattery)" || { echo "SlimBattery is not running" >&2; exit 1; }
+pid="$(pgrep -nx SlimBattery)" || { echo "SlimBattery is not running" >&2; exit 1; }
 top -pid "$pid" -stats cpu,idlew,mem -l "$((samples + 1))" -s 1 | awk '
 	$1 ~ /^[0-9.]+$/ {
 		if (seen++) { cpu += $1; count++ } else { firstWakeups = $2 }

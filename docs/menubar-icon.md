@@ -11,6 +11,7 @@ SlimBattery's menubar item is an upright battery, 11 × 22 pt, drawn in code (no
 | Plugged in, not charging | plug | white/black per menubar |
 | Low Power Mode | % (plug if plugged in) | yellow `#FFD60A` (wins over other colors) |
 | Temperature ≥ threshold | unchanged | unchanged + red dot top-right |
+| No battery data (desktop Mac, or before macOS reports power at login) | "—" text instead of the battery | — |
 
 Where the % or plug overlaps a white/black fill it is cut out to transparent, so the menubar shows through; over a colored fill it is drawn black.
 
