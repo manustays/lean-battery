@@ -7,12 +7,18 @@ public enum IconRenderer {
 	/// Icon canvas in points.
 	public static let size = CGSize(width: 11, height: 22)
 
-	private static let cap = CGRect(x: 3.5, y: 0.6, width: 4.0, height: 1.9)
-	private static let body = CGRect(x: 0.6, y: 2.5, width: 9.8, height: 19.0)
-	private static let inner = CGRect(x: 1.9, y: 3.8, width: 7.2, height: 16.4)
-	private static let centerX = 5.5
-	private static let innerMidY = 12.0
+	private static let cap = CGRect(x: 3.5, y: 0.4, width: 4.0, height: 1.6)
+	private static let body = CGRect(x: 0.45, y: 2.2, width: 10.1, height: 19.4)
+	private static let bodyStrokeWidth = 0.9
+	private static let inner = CGRect(x: 1.35, y: 3.1, width: 8.3, height: 17.6)
 	private static let badgeCenter = CGPoint(x: 8.9, y: 2.3)
+	/// Fill opacities: soft enough that a solid glyph drawn on top stays readable.
+	private static let foregroundFillAlpha = 0.28
+	private static let colorFillAlpha = 0.6
+	/// Core Text trait values for SF semibold compressed (raw values of NSFont.Weight.semibold / NSFont.Width.compressed).
+	private static let numberWeightTrait = 0.3
+	private static let numberWidthTrait = -0.3
+	private static let plugScale = 1.3
 
 	/// Renders `spec` at `scale` (1 or 2 for menubar use). `foregroundIsWhite` follows the menubar appearance.
 	public static func render(_ spec: IconSpec, foregroundIsWhite: Bool, scale: CGFloat) -> CGImage? {
@@ -39,30 +45,20 @@ public enum IconRenderer {
 		context.fillPath()
 
 		context.setStrokeColor(foreground)
-		context.setLineWidth(1.1)
+		context.setLineWidth(bodyStrokeWidth)
 		context.addPath(roundedRect(body, radius: 2.6))
 		context.strokePath()
 
 		let fillHeight = inner.height * spec.fillFraction
-		let fillRect = CGRect(x: inner.minX, y: inner.maxY - fillHeight, width: inner.width, height: fillHeight)
-		let fillColor = color(for: spec.fill, foreground: foreground)
 		if fillHeight > 0 {
-			context.setFillColor(fillColor)
-			context.addPath(roundedRect(fillRect, radius: min(1.4, fillHeight / 2)))
+			let fillRect = CGRect(x: inner.minX, y: inner.maxY - fillHeight, width: inner.width, height: fillHeight)
+			context.setFillColor(fillColor(for: spec.fill, foreground: foreground))
+			context.addPath(roundedRect(fillRect, radius: min(1.7, fillHeight / 2)))
 			context.fillPath()
 		}
 
-		// Glyph in foreground everywhere, then knocked out (or blackened) where it overlaps the fill.
+		// One solid color over the soft fill, so digits are never split at the fill line.
 		drawGlyph(spec, color: foreground, in: context)
-		if fillHeight > 0 {
-			context.saveGState()
-			context.clip(to: fillRect)
-			if spec.fill == .foreground {
-				context.setBlendMode(.clear)
-			}
-			drawGlyph(spec, color: black, in: context)
-			context.restoreGState()
-		}
 
 		if spec.showsHotBadge {
 			context.saveGState()
@@ -79,7 +75,7 @@ public enum IconRenderer {
 		context.setFillColor(color)
 		switch spec.glyph {
 		case .plug:
-			let transform = CGAffineTransform(translationX: centerX, y: innerMidY).scaledBy(x: 1.15, y: 1.15)
+			let transform = CGAffineTransform(translationX: inner.midX, y: inner.midY).scaledBy(x: plugScale, y: plugScale)
 			let parts: [(CGRect, CGFloat)] = [
 				(CGRect(x: -1.55, y: -3.7, width: 0.85, height: 2.0), 0.3),
 				(CGRect(x: 0.70, y: -3.7, width: 0.85, height: 2.0), 0.3),
@@ -91,31 +87,38 @@ public enum IconRenderer {
 			}
 			context.fillPath()
 		case .number(let value):
-			let fontSize = CGFloat(spec.numberFontSize)
-			let font = CTFontCreateUIFontForLanguage(.emphasizedSystem, fontSize, nil)
+			let font = numberFont(size: CGFloat(spec.numberFontSize))
 			let attributes: [NSAttributedString.Key: Any] = [
-				NSAttributedString.Key(kCTFontAttributeName as String): font as Any,
-				NSAttributedString.Key(kCTKernAttributeName as String): -0.25,
+				NSAttributedString.Key(kCTFontAttributeName as String): font,
+				NSAttributedString.Key(kCTKernAttributeName as String): -0.3,
 				NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true,
 			]
 			let line = CTLineCreateWithAttributedString(NSAttributedString(string: String(value), attributes: attributes))
 			let width = CTLineGetTypographicBounds(line, nil, nil, nil)
 			context.saveGState()
-			// Undo the flipped CTM for text so glyphs are upright.
+			// Undo the flipped CTM for text so glyphs are upright; center the cap height vertically.
 			context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
-			context.textPosition = CGPoint(x: centerX - width / 2, y: innerMidY + 0.36 * fontSize)
+			context.textPosition = CGPoint(x: inner.midX - width / 2, y: inner.midY + CTFontGetCapHeight(font) / 2)
 			CTLineDraw(line, context)
 			context.restoreGState()
 		}
 	}
 
-	/// Maps a fill role to a concrete color.
-	private static func color(for fill: IconSpec.Fill, foreground: CGColor) -> CGColor {
+	/// SF semibold compressed at `size`, built from Core Text traits so the core library needs no AppKit.
+	private static func numberFont(size: CGFloat) -> CTFont {
+		let base = CTFontCreateUIFontForLanguage(.system, size, nil) ?? CTFontCreateWithName("Helvetica" as CFString, size, nil)
+		let traits: [CFString: Any] = [kCTFontWeightTrait: numberWeightTrait, kCTFontWidthTrait: numberWidthTrait]
+		let descriptor = CTFontDescriptorCreateCopyWithAttributes(CTFontCopyFontDescriptor(base), [kCTFontTraitsAttribute: traits] as CFDictionary)
+		return CTFontCreateWithFontDescriptor(descriptor, size, nil)
+	}
+
+	/// Maps a fill role to its translucent fill color.
+	private static func fillColor(for fill: IconSpec.Fill, foreground: CGColor) -> CGColor {
 		switch fill {
-		case .foreground: foreground
-		case .lowPower: CGColor(srgbRed: 1.0, green: 0.839, blue: 0.039, alpha: 1)
-		case .charging: CGColor(srgbRed: 0.188, green: 0.820, blue: 0.345, alpha: 1)
-		case .low: red
+		case .foreground: foreground.copy(alpha: foregroundFillAlpha) ?? foreground
+		case .lowPower: CGColor(srgbRed: 1.0, green: 0.839, blue: 0.039, alpha: colorFillAlpha)
+		case .charging: CGColor(srgbRed: 0.188, green: 0.820, blue: 0.345, alpha: colorFillAlpha)
+		case .low: CGColor(srgbRed: 1.0, green: 0.271, blue: 0.227, alpha: colorFillAlpha)
 		}
 	}
 

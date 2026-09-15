@@ -6,14 +6,14 @@ SlimBattery's menubar item is an upright battery, 11 × 22 pt, drawn in code (no
 
 | State | Inside the battery | Fill |
 |---|---|---|
-| On battery | charge % (7.8pt bold; 5.6pt at 100) | white/black per menubar, red at ≤ 20% |
-| Charging | plug | green `#30D158` |
-| Plugged in, not charging | plug | white/black per menubar |
-| Low Power Mode | % (plug if plugged in) | yellow `#FFD60A` (wins over other colors) |
+| On battery | charge % (9pt SF semibold compressed; 6.6pt at 100) | white/black per menubar at 28% opacity, red at ≤ 20% |
+| Charging | plug | green `#30D158` at 60% opacity |
+| Plugged in, not charging | plug | white/black per menubar at 28% opacity |
+| Low Power Mode | % (plug if plugged in) | yellow `#FFD60A` at 60% opacity (wins over other colors) |
 | Temperature ≥ threshold | unchanged | unchanged + red dot top-right |
 | No battery data (desktop Mac, or before macOS reports power at login) | "—" text instead of the battery | — |
 
-Where the % or plug overlaps a white/black fill it is cut out to transparent, so the menubar shows through; over a colored fill it is drawn black.
+The fill is translucent and the % or plug is always drawn in one solid color (white on a dark menubar, black on a light one) on top of it, so digits stay whole and readable at any charge level. Digits use SF compressed so two digits fit the 8.3pt interior without touching the frame.
 
 ## How it updates
 

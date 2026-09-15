@@ -8,7 +8,7 @@ import Testing
 		#expect(spec.glyph == .number(57))
 		#expect(spec.fillFraction == 0.57)
 		#expect(!spec.showsHotBadge)
-		#expect(spec.numberFontSize == 7.8)
+		#expect(spec.numberFontSize == 9.0)
 	}
 
 	@Test(arguments: [(20, IconSpec.Fill.low), (21, IconSpec.Fill.foreground), (1, IconSpec.Fill.low)])
@@ -34,7 +34,7 @@ import Testing
 	}
 
 	@Test func fullUsesSmallerFont() {
-		#expect(IconSpec(state: BatteryState(percent: 100)).numberFontSize == 5.6)
+		#expect(IconSpec(state: BatteryState(percent: 100)).numberFontSize == 6.6)
 	}
 
 	@Test func hotShowsBadge() {
