@@ -6,6 +6,7 @@ let package = Package(
 	platforms: [.macOS(.v26)],
 	targets: [
 		.target(name: "SlimBatteryCore"),
+		.executableTarget(name: "SlimBattery", dependencies: ["SlimBatteryCore"]),
 		.testTarget(name: "SlimBatteryCoreTests", dependencies: ["SlimBatteryCore"]),
 	]
 )
