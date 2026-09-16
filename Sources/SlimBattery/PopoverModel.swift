@@ -45,6 +45,8 @@ final class PopoverModel {
 
 	/// Refreshes now and every 5 s until `stop()`.
 	func start() {
+		launchAtLogin = LoginItem.isEnabled
+		launchAtLoginMessage = LoginItem.statusText
 		refresh()
 		guard timer == nil else { return }
 		let timer = Timer(timeInterval: 5, repeats: true) { [weak self] _ in
@@ -74,12 +76,20 @@ final class PopoverModel {
 		monitor.refresh()
 		guard let state = monitor.state else {
 			header = nil
+			info = nil
 			return
 		}
 		let registry = SystemPower.smartBatteryProperties()
-		header = PowerHeader(state: state, registry: registry)
+		let newHeader = PowerHeader(state: state, registry: registry)
+		// Both values are Equatable: assigning only on change keeps @Observable from re-rendering every tick.
+		if newHeader != header {
+			header = newHeader
+		}
 		if isInfoExpanded, let description = SystemPower.internalBatteryDescription() {
-			info = BatteryInfo(powerSource: description, registry: registry)
+			let newInfo = BatteryInfo(powerSource: description, registry: registry)
+			if newInfo != info {
+				info = newInfo
+			}
 		}
 	}
 
