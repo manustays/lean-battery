@@ -8,6 +8,26 @@ import SlimBatteryCore
 final class PopoverModel {
 	private(set) var header: PowerHeader?
 	private(set) var info: BatteryInfo?
+
+	/// What the energy section is currently showing.
+	enum EnergyState: Equatable {
+		case loading
+		case rows([EnergyRow])
+		case empty(String)
+		case unavailable
+	}
+
+	private(set) var energyState: EnergyState = .loading
+
+	/// Selected range. Never persisted: the popover always opens on `Now` (spec §5.2).
+	var energyRange: EnergyRange = .now {
+		didSet {
+			guard energyRange != oldValue else { return }
+			energyState = .loading
+			refreshEnergy()
+		}
+	}
+
 	var isShowingSettings = false
 	private(set) var isChangingLowPowerMode = false
 	private(set) var lowPowerModeMessage: String?
@@ -33,6 +53,11 @@ final class PopoverModel {
 
 	@ObservationIgnored private let monitor: BatteryMonitor
 	@ObservationIgnored private var timer: Timer?
+	@ObservationIgnored private let energyStore = EnergyStore()
+	/// Seconds of history behind each range, for the short-span segment labels.
+	@ObservationIgnored private var energyCoverage: [EnergyRange: Double] = [:]
+	/// Generation counter so a slow read can never overwrite a newer one.
+	@ObservationIgnored private var energyGeneration = 0
 
 	/// Creates the model from persisted settings.
 	init(monitor: BatteryMonitor) {
@@ -58,11 +83,16 @@ final class PopoverModel {
 		self.timer = timer
 	}
 
-	/// Stops the refresh timer and leaves settings.
+	/// Stops the refresh timer, leaves settings, and releases cached energy data.
 	func stop() {
 		timer?.invalidate()
 		timer = nil
 		isShowingSettings = false
+		energyRange = .now
+		energyState = .loading
+		energyCoverage = [:]
+		let store = energyStore
+		Task { await store.clearCache() }
 	}
 
 	/// Re-reads values only while the popover is visible (called on monitor changes).
@@ -74,6 +104,7 @@ final class PopoverModel {
 	/// Reads the monitor state and battery registry; Battery Information only when expanded.
 	func refresh() {
 		monitor.refresh()
+		refreshEnergy()
 		guard let state = monitor.state else {
 			header = nil
 			info = nil
@@ -91,6 +122,50 @@ final class PopoverModel {
 				info = newInfo
 			}
 		}
+	}
+
+	/// Segment title for `range`, shortened when less history exists (e.g. "6d").
+	func energyLabel(for range: EnergyRange) -> String {
+		guard let covered = energyCoverage[range] else { return range.label }
+		return range.label(covering: covered)
+	}
+
+	/// Re-reads energy for the selected range on a background actor and publishes the result.
+	func refreshEnergy() {
+		energyGeneration += 1
+		let generation = energyGeneration
+		let range = energyRange
+		let store = energyStore
+		let now = Date().timeIntervalSince1970
+		Task {
+			let outcome: Result<EnergySums, Error>
+			do {
+				outcome = .success(try await store.sums(for: range, now: now))
+			} catch {
+				outcome = .failure(error)
+			}
+			// A newer read (or a closed popover) has superseded this one.
+			guard generation == energyGeneration, timer != nil, range == energyRange else { return }
+			apply(outcome, for: range)
+		}
+	}
+
+	/// Turns a completed read into display state (spec §5.2, §9).
+	private func apply(_ outcome: Result<EnergySums, Error>, for range: EnergyRange) {
+		guard case .success(let measured) = outcome else {
+			energyState = .unavailable
+			return
+		}
+		energyCoverage[range] = measured.coveredSeconds
+		guard !measured.isStale else {
+			energyState = .empty(range.emptyText)
+			return
+		}
+		let rows = EnergyAggregator.rows(
+			sums: measured.sums,
+			displayName: AppCatalog.displayName(for:),
+			isApplication: AppCatalog.isApplication(_:))
+		energyState = rows.isEmpty ? .empty(range.emptyText) : .rows(rows)
 	}
 
 	/// Runs the admin-prompt toggle; the header follows the real state via the monitor's notification.

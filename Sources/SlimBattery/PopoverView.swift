@@ -19,6 +19,8 @@ struct PopoverView: View {
 						.padding(14)
 				}
 				Divider()
+				EnergySection(model: model)
+				Divider()
 				BatteryInfoSection(model: model)
 				Divider()
 				FooterSection(model: model)
@@ -163,5 +165,103 @@ private struct FooterSection: View {
 		.foregroundStyle(.secondary)
 		.padding(.horizontal, 14)
 		.padding(.vertical, 8)
+	}
+}
+
+/// Apps using significant energy, with a range switch (spec §5.2).
+private struct EnergySection: View {
+	@Bindable var model: PopoverModel
+
+	var body: some View {
+		VStack(alignment: .leading, spacing: 6) {
+			HStack {
+				Text("ENERGY")
+					.font(.system(size: 10, weight: .medium))
+					.foregroundStyle(.secondary)
+				Spacer()
+				Picker("Range", selection: $model.energyRange) {
+					ForEach(EnergyRange.allCases) { range in
+						Text(model.energyLabel(for: range)).tag(range)
+					}
+				}
+				.pickerStyle(.segmented)
+				.labelsHidden()
+				.controlSize(.mini)
+				.fixedSize()
+			}
+			content
+		}
+		.padding(.horizontal, 14)
+		.padding(.vertical, 8)
+	}
+
+	@ViewBuilder
+	private var content: some View {
+		switch model.energyState {
+		case .loading:
+			Text("Reading…")
+				.foregroundStyle(.tertiary)
+				.frame(maxWidth: .infinity, alignment: .leading)
+		case .unavailable:
+			Text("Energy data unavailable (macOS changed powerlog)")
+				.font(.system(size: 11))
+				.foregroundStyle(.secondary)
+		case .empty(let message):
+			Text(message)
+				.font(.system(size: 11))
+				.foregroundStyle(.secondary)
+		case .rows(let rows):
+			ForEach(rows) { row in
+				EnergyRowView(row: row)
+			}
+		}
+	}
+}
+
+/// One energy row: icon, name, bar, share.
+private struct EnergyRowView: View {
+	let row: EnergyRow
+
+	var body: some View {
+		HStack(spacing: 6) {
+			icon
+				.frame(width: 16, height: 16)
+			Text(row.displayName)
+				.lineLimit(1)
+				.truncationMode(.tail)
+			Spacer(minLength: 4)
+			Capsule()
+				.fill(.quaternary)
+				.frame(width: 60, height: 4)
+				.overlay(alignment: .leading) {
+					Capsule()
+						.fill(barColor)
+						.frame(width: 60 * min(1, row.sharePercent / 100), height: 4)
+				}
+			Text("\(Int(row.sharePercent.rounded()))%")
+				.monospacedDigit()
+				.foregroundStyle(.secondary)
+				.frame(width: 30, alignment: .trailing)
+		}
+	}
+
+	/// The app's icon, or a neutral glyph for daemons and helpers that have none.
+	@ViewBuilder
+	private var icon: some View {
+		if let image = AppCatalog.icon(for: row.id) {
+			Image(nsImage: image).resizable()
+		} else {
+			Image(systemName: "gearshape")
+				.foregroundStyle(.tertiary)
+		}
+	}
+
+	/// Spec §5.2: ≥ 40 % orange, ≥ 15 % yellow, else secondary gray.
+	private var barColor: Color {
+		switch row.barLevel {
+		case .high: Color(red: 1.0, green: 0.62, blue: 0.04)
+		case .medium: Color(red: 1.0, green: 0.84, blue: 0.04)
+		case .low: Color.secondary
+		}
 	}
 }
