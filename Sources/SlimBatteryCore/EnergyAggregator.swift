@@ -2,13 +2,18 @@ import Foundation
 
 /// Turns raw per-`who` energy sums into the popover's display rows (spec §5.2, §8.3).
 public enum EnergyAggregator {
+	/// Spec §8.3: a non-app item earns a row only by ranking this high overall.
+	/// Deliberately independent of `limit`, which caps how many rows are DISPLAYED —
+	/// conflating the two is what made the eligibility set wrong before.
+	private static let systemItemEligibilityRank = 5
+
 	/// Applies the display rules and returns at most `limit` rows, highest share first.
 	///
 	/// - Parameters:
 	///   - sums: nanojoules per raw powerlog `who` value.
 	///   - displayName: resolves a canonical id to a human name (the app layer supplies real app names).
 	///   - isApplication: true when the id resolves to an installed `.app`.
-	///   - limit: maximum rows shown.
+	///   - limit: maximum rows displayed; does not affect which items are eligible (see `systemItemEligibilityRank`).
 	///   - minimumSharePercent: rows below this share are dropped.
 	public static func rows(
 		sums: [String: Double],
@@ -28,7 +33,7 @@ public enum EnergyAggregator {
 		// Rank everything once: ties break on id so the order is stable between ticks.
 		let ranked = merged.sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
 		// A system item earns a place only by ranking in the overall top 5; an app always qualifies.
-		let topIDs = Set(ranked.prefix(5).map(\.key))
+		let topIDs = Set(ranked.prefix(systemItemEligibilityRank).map(\.key))
 
 		return ranked
 			.filter { isApplication($0.key) || topIDs.contains($0.key) }
