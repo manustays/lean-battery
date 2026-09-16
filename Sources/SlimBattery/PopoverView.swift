@@ -259,8 +259,8 @@ private struct EnergyRowView: View {
 	/// Spec §5.2: ≥ 40 % orange, ≥ 15 % yellow, else secondary gray.
 	private var barColor: Color {
 		switch row.barLevel {
-		case .high: Color(red: 1.0, green: 0.62, blue: 0.04)
-		case .medium: Color(red: 1.0, green: 0.84, blue: 0.04)
+		case .high: Color(red: 255 / 255, green: 159 / 255, blue: 10 / 255)     // #FF9F0A
+		case .medium: Color(red: 255 / 255, green: 214 / 255, blue: 10 / 255)   // #FFD60A
 		case .low: Color.secondary
 		}
 	}

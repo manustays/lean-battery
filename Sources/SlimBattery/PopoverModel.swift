@@ -53,6 +53,7 @@ final class PopoverModel {
 
 	@ObservationIgnored private let monitor: BatteryMonitor
 	@ObservationIgnored private var timer: Timer?
+	/// Reads energy sums from the powerlog; an actor because its work is blocking file/SQLite I/O.
 	@ObservationIgnored private let energyStore = EnergyStore()
 	/// Seconds of history behind each range, for the short-span segment labels.
 	@ObservationIgnored private var energyCoverage: [EnergyRange: Double] = [:]
