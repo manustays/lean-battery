@@ -78,6 +78,27 @@ private func name(_ id: String) -> String { EnergyName.fallbackDisplayName(for: 
 		#expect(EnergyAggregator.rows(sums: ["app.a": 0], displayName: name, isApplication: isApp).isEmpty)
 	}
 
+	@Test func isApplicationStopsOnceTheLimitIsReached() {
+		// Three high-value apps satisfy limit: 3 on their own; 50 low-value, non-top-5,
+		// non-app rows follow. isApplication must never be probed for any of those 50 —
+		// that unbounded fan-out is the main-thread freeze this test guards against.
+		final class Counter { var calls = 0 }
+		let counter = Counter()
+		var sums: [String: Double] = [:]
+		for i in 1...3 { sums["app.\(i)"] = 100 - Double(i) }
+		for i in 1...50 { sums["sys.\(i)"] = 0.01 }
+		let rows = EnergyAggregator.rows(
+			sums: sums,
+			displayName: name,
+			isApplication: { id in
+				counter.calls += 1
+				return id.hasPrefix("app.")
+			},
+			limit: 3)
+		#expect(rows.map(\.id) == ["app.1", "app.2", "app.3"])
+		#expect(counter.calls == 3)
+	}
+
 	@Test func displayNameComesFromTheResolver() {
 		let rows = EnergyAggregator.rows(
 			sums: ["app.orca": 100],

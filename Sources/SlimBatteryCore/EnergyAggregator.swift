@@ -35,14 +35,27 @@ public enum EnergyAggregator {
 		// A system item earns a place only by ranking in the overall top 5; an app always qualifies.
 		let topIDs = Set(ranked.prefix(systemItemEligibilityRank).map(\.key))
 
-		return ranked
-			.filter { isApplication($0.key) || topIDs.contains($0.key) }
-			.prefix(limit)
-			.map { EnergyRow(
-				id: $0.key,
-				displayName: displayName($0.key),
-				sharePercent: 100 * $0.value / total,
-				isApplication: isApplication($0.key)) }
-			.filter { $0.sharePercent >= minimumSharePercent }
+		// Bounded scan: `ranked` can hold ~290 ids and `isApplication` is a ~4 ms main-actor
+		// LaunchServices lookup, so an eager `filter` over all of it is a visible popover freeze.
+		// Stop as soon as `limit` eligible rows are found; never call `isApplication` twice per id.
+		var eligible: [EnergyRow] = []
+		eligible.reserveCapacity(limit)
+		for entry in ranked {
+			guard eligible.count < limit else { break }
+			let isApp: Bool
+			if topIDs.contains(entry.key) {
+				// Already eligible; still need the flag for the row, but the eligibility test itself skipped the lookup.
+				isApp = isApplication(entry.key)
+			} else {
+				isApp = isApplication(entry.key)
+				guard isApp else { continue }
+			}
+			eligible.append(EnergyRow(
+				id: entry.key,
+				displayName: displayName(entry.key),
+				sharePercent: 100 * entry.value / total,
+				isApplication: isApp))
+		}
+		return eligible.filter { $0.sharePercent >= minimumSharePercent }
 	}
 }
