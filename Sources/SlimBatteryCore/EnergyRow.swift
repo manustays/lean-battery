@@ -4,12 +4,14 @@ import Foundation
 public struct EnergyRow: Equatable, Sendable, Identifiable {
 	/// Canonical identifier — a bundle id where one exists, otherwise a launchd name.
 	public let id: String
+	/// Human-readable name shown in the row.
 	public let displayName: String
 	/// Share of the range's total energy, 0...100.
 	public let sharePercent: Double
 	/// True when the id resolves to an installed `.app`; drives the icon.
 	public let isApplication: Bool
 
+	/// Creates a row with an already-resolved display name and share.
 	public init(id: String, displayName: String, sharePercent: Double, isApplication: Bool) {
 		self.id = id
 		self.displayName = displayName

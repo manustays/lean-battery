@@ -7,6 +7,7 @@ public enum EnergyRange: String, CaseIterable, Sendable, Identifiable {
 	case day
 	case week
 
+	/// Stable identifier, e.g. for `ForEach`.
 	public var id: String { rawValue }
 
 	/// Window length in seconds.
