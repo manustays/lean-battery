@@ -25,10 +25,10 @@ Apps using significant energy over `Now` (5 min), `8h`, `24h` or `7d`. The popov
 
 Two details matter for accuracy:
 
-- **The window is anchored to the log, not the clock.** Powerlog timestamps do not sit on the wall clock, and the difference is not stable enough to correct for. SlimBattery instead measures back from the newest logged moment, which is correct whatever the log's clock is doing. If the log has not been written for 15 minutes, the range reads as empty rather than showing stale numbers.
+- **The window is anchored to the log, not the clock.** Powerlog timestamps do not sit on the wall clock, and the difference is not stable enough to correct for. SlimBattery instead measures back from the newest logged moment, which is correct whatever the log's clock is doing. If the log has not been written for more than 15 minutes, the range reads as empty rather than showing stale numbers.
 - **Long activities are counted proportionally.** The log records intervals averaging about 10 minutes — longer than the `Now` window itself. Only the part of each interval falling inside the window is counted, so `Now` is a true 5-minute measure.
 
-`7d` also reads the daily archives: each is decompressed to a temporary file, queried, and deleted. Their totals are cached while the popover stays open, so only the live log is re-read on each refresh.
+`7d` also reads the daily archives: each is decompressed to a temporary file, queried, and deleted. Archives that fall entirely inside the range have their totals cached while the popover stays open, so they are not read again. The one archive straddling the start of the range is still re-read on each refresh, because how much of it counts depends on exactly where the range begins.
 
 ### Battery Information
 Collapsed by default; SlimBattery remembers whether you left it open. Values are read only while the popover is open **and** this section is expanded.
@@ -56,7 +56,7 @@ Launch at login registers SlimBattery as a login item only when you change the s
 
 - While the popover is **closed**, nothing here runs.
 - While it is **open**, values refresh every 5 s (1 s tolerance) and immediately on any battery change. The timer stops when the popover closes.
-- Energy is read on a background actor, never on the main thread: one query costs roughly 30–70 ms, and the `7d` path about a second on its first run.
+- Energy is read on a background actor, never on the main thread: one query costs roughly 30–70 ms, and the `7d` path about a second on its first run — after that, roughly one archive decompression (~70 ms) per refresh, plus the live-log query.
 
 Measured with the popover open: _pending — needs a human to hold the popover open while `scripts/cpu-check.sh 120` runs._
 
