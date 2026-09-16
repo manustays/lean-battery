@@ -5,22 +5,22 @@ import SlimBatteryCore
 enum LowPowerToggle {
 	/// Asks for an admin password and sets Low Power Mode; resolves when `osascript` exits.
 	static func set(_ enabled: Bool) async -> LowPowerCommand.Outcome {
-		await withCheckedContinuation { continuation in
+		await Task.detached {
 			let process = Process()
 			process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
 			process.arguments = ["-e", LowPowerCommand.appleScript(enable: enabled)]
 			process.standardOutput = FileHandle.nullDevice
 			let errorPipe = Pipe()
 			process.standardError = errorPipe
-			process.terminationHandler = { finished in
-				let message = String(decoding: errorPipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-				continuation.resume(returning: LowPowerCommand.outcome(exitStatus: finished.terminationStatus, standardError: message))
-			}
 			do {
 				try process.run()
 			} catch {
-				continuation.resume(returning: .failed(error.localizedDescription))
+				return LowPowerCommand.Outcome.failed(error.localizedDescription)
 			}
-		}
+			// Drain stderr to EOF first so the child can never block on a full pipe; EOF means it exited.
+			let message = String(decoding: errorPipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+			process.waitUntilExit()
+			return LowPowerCommand.outcome(exitStatus: process.terminationStatus, standardError: message)
+		}.value
 	}
 }
