@@ -35,13 +35,13 @@ The macOS battery icon with a percentage is wide, and on a notched MacBook menub
 
 **In the popover (available now)**
 
+- **Apps using significant energy** with a `Now / 8h / 24h / 7d` range switch.
 - Battery header: %, time left, power source and adapter wattage, live system power draw, temperature, and a Low Power Mode switch.
 - Collapsible **battery information**: health, condition, cycle count, capacity, voltage, adapter.
 - Settings: high-temperature threshold and launch at login.
 
 **Coming next**
 
-- **Apps using significant energy** with a `Now / 8h / 24h / 7d` range switch.
 - **Bluetooth device batteries** (headphones, mice, keyboards, controllers).
 - Optional **notifications**: up to 5 battery threshold alerts, power connected/disconnected, a floating pill below the notch, and a screen-edge glow for low battery.
 
@@ -54,7 +54,7 @@ The macOS battery icon with a percentage is wide, and on a notched MacBook menub
 ## Permissions & Privacy
 
 - **No special permissions.** SlimBattery reads battery data from public IOKit APIs. It does not need Accessibility, Full Disk Access, or admin rights to run.
-- **Energy history (popover, in development)** comes from macOS's own power log at `/private/var/db/powerlog/Library/BatteryLife/`. The file is readable by all users on the Mac; SlimBattery opens it **read-only** and only while the popover is open.
+- **Energy history (popover)** comes from macOS's own power log at `/private/var/db/powerlog/Library/BatteryLife/`. The file is readable by all users on the Mac; SlimBattery opens it **read-only** and only while the popover is open.
 - **Low Power Mode toggle** asks for your admin password each time (it runs `pmset`), because macOS requires root to change it.
 - **Update check (planned, optional).** When enabled, SlimBattery asks GitHub for the latest release at most once a day, and only when you open the popover. GitHub sees your IP address and the app version. It never downloads or installs anything, and turning it off in Settings means no network requests at all.
 - **Stays on your machine.** Battery and energy data never leave your Mac. No telemetry, no analytics.
