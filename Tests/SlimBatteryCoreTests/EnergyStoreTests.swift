@@ -2,8 +2,23 @@ import Foundation
 import Testing
 @testable import SlimBatteryCore
 
+/// A `makeTree` fixture: the live DB path and the archive directory, removed automatically once
+/// the test is done with them (Swift Testing has no `tearDown`, so `deinit` stands in for one).
+private final class FixtureTree {
+	let livePath: String
+	let directory: URL
+	init(livePath: String, directory: URL) {
+		self.livePath = livePath
+		self.directory = directory
+	}
+	deinit {
+		try? FileManager.default.removeItem(atPath: livePath)
+		try? FileManager.default.removeItem(at: directory)
+	}
+}
+
 /// Builds a temp directory holding a live DB and named archive files (already uncompressed).
-private func makeTree(live: [FixtureRow], archives: [(String, [FixtureRow])]) -> (livePath: String, directory: URL) {
+private func makeTree(live: [FixtureRow], archives: [(String, [FixtureRow])]) -> FixtureTree {
 	let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 	try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 	let livePath = makeFixture(rows: live)
@@ -11,7 +26,7 @@ private func makeTree(live: [FixtureRow], archives: [(String, [FixtureRow])]) ->
 		let path = makeFixture(rows: rows)
 		try? FileManager.default.moveItem(atPath: path, toPath: directory.appendingPathComponent(name).path)
 	}
-	return (livePath, directory)
+	return FixtureTree(livePath: livePath, directory: directory)
 }
 
 /// Stands in for gunzip: the fixtures are already plain SQLite, so copy to a fresh temp file.
@@ -149,5 +164,68 @@ private final class CallCounter: @unchecked Sendable {
 		await store.clearCache()
 		// Still correct after the cache is dropped.
 		#expect(abs((try await store.sums(for: .week, now: 1000).sums["com.a"] ?? 0) - 150) < 0.001)
+	}
+
+	@Test func straddlingArchiveCachesItsClampedContribution() async throws {
+		// Live covers [900, 1000]; the archive covers [600, 900]. `.now` (300 s) against now: 1000
+		// gives start = 700, which falls inside the archive's own span — it straddles the window
+		// start, unlike `cacheAvoidsRepeatedDecompression`'s wholly-inside archive.
+		let tree = makeTree(
+			live: [FixtureRow(start: 900, end: 1000, bundleId: "com.a", launchdName: "", energy: 100)],
+			archives: [("powerlog_2026-09-10_AAAA.PLSQL.gz", [FixtureRow(start: 600, end: 900, bundleId: "com.a", launchdName: "", energy: 300)])])
+		let counter = CallCounter()
+		let countingDecompress: @Sendable (URL) throws -> URL = { url in
+			counter.increment()
+			return try passthrough(url)
+		}
+		let store = EnergyStore(livePath: tree.livePath, archivesDirectory: tree.directory, decompress: countingDecompress)
+
+		let beforeFirst = counter.value
+		let first = try await store.sums(for: .now, now: 1000)
+		let firstCallDecompressions = counter.value - beforeFirst
+		#expect(firstCallDecompressions > 0)
+
+		// By hand: the archive row spans [600, 900] carrying 300 nJ, clamped to the window's
+		// [700, 900] slice — an overlap of 200 out of its own 300 s duration — so it contributes
+		// 300 * (200 / 300) = 200. The live row fully occupies [900, 1000] inside [700, 1000], so it
+		// contributes its whole 100. Total: 300. A regression that served the archive's unclamped
+		// total (300) instead of its clamped slice (200) would sum to 400, not 300.
+		#expect(abs((first.sums["com.a"] ?? 0) - 300) < 0.001)
+
+		let beforeSecond = counter.value
+		let second = try await store.sums(for: .now, now: 1000)
+		let secondCallDecompressions = counter.value - beforeSecond
+		#expect(secondCallDecompressions == 0)
+		#expect(abs((second.sums["com.a"] ?? 0) - 300) < 0.001)
+
+		await store.clearCache()
+		let beforeThird = counter.value
+		_ = try await store.sums(for: .now, now: 1000)
+		let thirdCallDecompressions = counter.value - beforeThird
+		#expect(thirdCallDecompressions > 0)
+	}
+
+	@Test func straddlingArchiveCacheRecomputesWhenTheRangeChanges() async throws {
+		// An archive old enough that both `.now` and `.week` straddle it (rather than one landing
+		// wholly inside), so a switch between them must miss the straddle cache and recompute.
+		let tree = makeTree(
+			live: [FixtureRow(start: 900, end: 1000, bundleId: "com.a", launchdName: "", energy: 100)],
+			archives: [("powerlog_2026-09-10_AAAA.PLSQL.gz", [FixtureRow(start: -700_000, end: 900, bundleId: "com.a", launchdName: "", energy: 1_000_000)])])
+		let counter = CallCounter()
+		let countingDecompress: @Sendable (URL) throws -> URL = { url in
+			counter.increment()
+			return try passthrough(url)
+		}
+		let store = EnergyStore(livePath: tree.livePath, archivesDirectory: tree.directory, decompress: countingDecompress)
+
+		let beforeNow = counter.value
+		_ = try await store.sums(for: .now, now: 1000)
+		#expect(counter.value - beforeNow > 0)
+
+		// Same archive, but `.week` derives a different `start`, so the cached `.now` contribution
+		// must not be reused — this must decompress again rather than answering from the cache.
+		let beforeWeek = counter.value
+		_ = try await store.sums(for: .week, now: 1000)
+		#expect(counter.value - beforeWeek > 0)
 	}
 }

@@ -45,6 +45,21 @@ public actor EnergyStore {
 	/// popover is open.
 	private var archiveCache: [String: ArchiveFacts] = [:]
 
+	/// One archive's clamped, prorated contribution to the exact `[start, end]` it was computed
+	/// against — for the archive that straddles the window start, where (unlike the wholly-inside
+	/// or wholly-outside cases) the answer genuinely depends on where the window begins.
+	private struct StraddleContribution {
+		var start: Double
+		var end: Double
+		var sums: [String: Double]
+	}
+	/// Straddler contribution keyed by archive filename. `Now` and `7d` both re-derive `start` every
+	/// 5-second tick, but for a multi-day range that only drifts by a few seconds tick to tick — far
+	/// smaller than the window itself — so reusing the last clamped result while `[start, end]` is
+	/// unchanged is a negligible, bounded trade-off. Archives rotate daily, which would invalidate
+	/// this, but not within a single popover session, and `clearCache()` drops it on close anyway.
+	private var straddleCache: [String: StraddleContribution] = [:]
+
 	public static let defaultLivePath = "/private/var/db/powerlog/Library/BatteryLife/CurrentPowerlog.PLSQL"
 	public static let defaultArchivesDirectory = URL(fileURLWithPath: "/private/var/db/powerlog/Library/BatteryLife/Archives")
 
@@ -66,6 +81,7 @@ public actor EnergyStore {
 	/// Drops cached archive sums. Called when the popover closes.
 	public func clearCache() {
 		archiveCache = [:]
+		straddleCache = [:]
 	}
 
 	/// Energy per `who` for `range`, anchored to the newest logged moment rather than to `now`.
@@ -149,10 +165,15 @@ public actor EnergyStore {
 			return (totals, facts.earliest)
 		}
 
-		// Straddling the window start: genuinely window-dependent, so this always needs a fresh,
-		// clamped query. Only the oldest reachable archive ever straddles `start`, so this is at
-		// most one decompression per tick rather than one per archive.
+		// Straddling the window start: genuinely window-dependent, so it must always be a clamped,
+		// prorated query — never the whole-archive totals above. But re-deriving that clamp every
+		// tick is the cost this cache removes: reuse it verbatim while `[start, end]` is unchanged,
+		// and recompute the moment either edge moves.
+		if let cached = straddleCache[name], cached.start == start, cached.end == end {
+			return (cached.sums, facts.earliest)
+		}
 		let sums = try withArchive(archive) { uri in try PowerlogDatabase.sums(uri: uri, start: start, end: end) }
+		straddleCache[name] = StraddleContribution(start: start, end: end, sums: sums)
 		return (sums, facts.earliest)
 	}
 
