@@ -19,6 +19,7 @@ public enum PowerlogDatabase {
 		case queryFailed(code: Int32)
 	}
 
+	/// The powerlog table every query in this file reads from.
 	static let table = "PLCoalitionAgent_EventInterval_CoalitionInterval"
 
 	/// Columns the query depends on. Verified present on the live database and all archives (41 columns).
@@ -72,6 +73,7 @@ public enum PowerlogDatabase {
 		let sql = """
 		SELECT \(whoExpression) AS who, SUM(\(energyExpression)) AS nj
 		FROM \(table)
+		WHERE timestampEnd > timestamp
 		GROUP BY who
 		HAVING nj > 0
 		"""
@@ -88,24 +90,29 @@ public enum PowerlogDatabase {
 			if let handle { sqlite3_close(handle) }
 			throw Failure.cannotOpen
 		}
-		let present = columns(handle)
-		let missing = requiredColumns.subtracting(present)
-		guard missing.isEmpty else {
+		do {
+			let present = try columns(handle)
+			let missing = requiredColumns.subtracting(present)
+			guard missing.isEmpty else { throw Failure.schemaMismatch(missing: missing.sorted()) }
+		} catch {
 			sqlite3_close(handle)
-			throw Failure.schemaMismatch(missing: missing.sorted())
+			throw error
 		}
 		return handle
 	}
 
 	/// Column names of the interval table, empty when it is absent.
-	private static func columns(_ handle: OpaquePointer) -> Set<String> {
+	private static func columns(_ handle: OpaquePointer) throws -> Set<String> {
 		var statement: OpaquePointer?
-		guard sqlite3_prepare_v2(handle, "PRAGMA table_info(\(table))", -1, &statement, nil) == SQLITE_OK else { return [] }
+		guard sqlite3_prepare_v2(handle, "PRAGMA table_info(\(table))", -1, &statement, nil) == SQLITE_OK else { throw Failure.cannotOpen }
 		defer { sqlite3_finalize(statement) }
 		var names = Set<String>()
-		while sqlite3_step(statement) == SQLITE_ROW {
+		var step = sqlite3_step(statement)
+		while step == SQLITE_ROW {
 			if let text = sqlite3_column_text(statement, 1) { names.insert(String(cString: text)) }
+			step = sqlite3_step(statement)
 		}
+		guard step == SQLITE_DONE else { throw Failure.queryFailed(code: step) }
 		return names
 	}
 
@@ -114,9 +121,11 @@ public enum PowerlogDatabase {
 		let handle = try open(uri)
 		defer { sqlite3_close(handle) }
 		var statement: OpaquePointer?
-		guard sqlite3_prepare_v2(handle, sql, -1, &statement, nil) == SQLITE_OK else { throw Failure.cannotOpen }
+		let prepared = sqlite3_prepare_v2(handle, sql, -1, &statement, nil)
+		guard prepared == SQLITE_OK else { throw Failure.queryFailed(code: prepared) }
 		defer { sqlite3_finalize(statement) }
-		guard sqlite3_step(statement) == SQLITE_ROW else { throw Failure.cannotOpen }
+		let step = sqlite3_step(statement)
+		guard step == SQLITE_ROW else { throw Failure.queryFailed(code: step) }
 		// MAX()/MIN() over zero rows still yields one row, holding SQL NULL rather than 0.0.
 		guard sqlite3_column_type(statement, 0) != SQLITE_NULL else { throw Failure.noData }
 		return sqlite3_column_double(statement, 0)

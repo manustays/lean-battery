@@ -116,6 +116,20 @@ private func standardRows() -> [FixtureRow] {
 		#expect(try PowerlogDatabase.sums(uri: uri, start: 700, end: 1000).isEmpty)
 	}
 
+	@Test func totalSumsSkipsZeroLengthIntervalsToo() throws {
+		// Same guard as `sums`: an archive lying wholly inside a window must not answer
+		// differently than the same data would if it straddled the window edge.
+		let path = makeFixture(rows: [
+			FixtureRow(start: 900, end: 900, bundleId: "com.z", launchdName: "", energy: 500),
+			FixtureRow(start: 800, end: 900, bundleId: "com.a", launchdName: "", energy: 50),
+		])
+		defer { try? FileManager.default.removeItem(atPath: path) }
+		let uri = PowerlogDatabase.readOnlyURI(path: path, immutable: false)
+		let sums = try PowerlogDatabase.totalSums(uri: uri)
+		#expect(sums["com.z"] == nil)
+		#expect(sums["com.a"] == 50)
+	}
+
 	@Test func schemaGuardRejectsAMissingColumn() throws {
 		let path = makeFixture(rows: [], columns: "ID INTEGER PRIMARY KEY, timestamp REAL, BundleId TEXT")
 		defer { try? FileManager.default.removeItem(atPath: path) }
