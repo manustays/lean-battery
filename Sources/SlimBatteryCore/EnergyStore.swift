@@ -24,9 +24,19 @@ public actor EnergyStore {
 	private let archivesDirectory: URL
 	private let stalenessLimit: Double
 	private let decompress: @Sendable (URL) throws -> URL
-	/// Whole-archive sums keyed by archive filename. Archives are immutable, so these never expire
-	/// while the popover is open; they are only valid for archives lying entirely inside the window.
-	private var archiveCache: [String: [String: Double]] = [:]
+
+	/// Everything worth remembering about one immutable archive, so a cache hit needs no
+	/// decompression at all. `totals` is populated only once the archive has been seen lying
+	/// entirely inside some window — until then it stays `nil` even though `earliest`/`latest`
+	/// are already known and save the two scalar queries on the next call.
+	private struct ArchiveFacts {
+		var earliest: Double
+		var latest: Double
+		var totals: [String: Double]?
+	}
+	/// Facts keyed by archive filename. Archives are immutable, so these never expire while the
+	/// popover is open.
+	private var archiveCache: [String: ArchiveFacts] = [:]
 
 	public static let defaultLivePath = "/private/var/db/powerlog/Library/BatteryLife/CurrentPowerlog.PLSQL"
 	public static let defaultArchivesDirectory = URL(fileURLWithPath: "/private/var/db/powerlog/Library/BatteryLife/Archives")
@@ -87,28 +97,56 @@ public actor EnergyStore {
 			.sorted { $0.lastPathComponent > $1.lastPathComponent }
 	}
 
-	/// Decompresses one archive and returns its contribution to `[start, end]`.
-	private func archiveSums(_ archive: URL, start: Double, end: Double) throws -> (sums: [String: Double], earliest: Double) {
-		let name = archive.lastPathComponent
+	/// Decompresses `archive` if it isn't already open, runs `body` against its read-only URI, and
+	/// always cleans up the temp file afterward.
+	private func withArchive<T>(_ archive: URL, _ body: (String) throws -> T) throws -> T {
 		let temporary = try decompress(archive)
 		defer { try? FileManager.default.removeItem(at: temporary) }
 		let uri = PowerlogDatabase.readOnlyURI(path: temporary.path, immutable: true)
-		let earliest = try PowerlogDatabase.earliest(uri: uri)
-		let latest = try PowerlogDatabase.anchor(uri: uri)
+		return try body(uri)
+	}
 
-		// Entirely outside the window.
-		guard latest > start, earliest < end else { return ([:], earliest) }
+	/// Returns one archive's contribution to `[start, end]`, decompressing only when the cache
+	/// cannot answer the question on its own.
+	private func archiveSums(_ archive: URL, start: Double, end: Double) throws -> (sums: [String: Double], earliest: Double) {
+		let name = archive.lastPathComponent
 
-		// Entirely inside it: every row counts in full, so the sums do not depend on the window
-		// and can be cached for the popover's lifetime. Only the oldest archive ever straddles
-		// `start`, so at most one archive is re-queried per tick.
-		if earliest >= start && latest <= end {
-			if let cached = archiveCache[name] { return (cached, earliest) }
-			let sums = try PowerlogDatabase.totalSums(uri: uri)
-			archiveCache[name] = sums
-			return (sums, earliest)
+		let facts: ArchiveFacts
+		if let cached = archiveCache[name] {
+			facts = cached
+		} else {
+			// Cache miss: one decompression learns everything this call needs — earliest, latest,
+			// and (when it turns out to matter) the whole-archive totals — so later calls don't pay
+			// for a second one just to get totals a moment later.
+			facts = try withArchive(archive) { uri in
+				let earliest = try PowerlogDatabase.earliest(uri: uri)
+				let latest = try PowerlogDatabase.anchor(uri: uri)
+				guard earliest >= start && latest <= end else {
+					return ArchiveFacts(earliest: earliest, latest: latest, totals: nil)
+				}
+				return ArchiveFacts(earliest: earliest, latest: latest, totals: try PowerlogDatabase.totalSums(uri: uri))
+			}
+			archiveCache[name] = facts
 		}
-		return (try PowerlogDatabase.sums(uri: uri, start: start, end: end), earliest)
+
+		// Entirely outside the window — known from the cached facts alone, no decompression needed.
+		guard facts.latest > start, facts.earliest < end else { return ([:], facts.earliest) }
+
+		// Entirely inside it: every row counts in full, so the sums do not depend on the window and
+		// are safe to cache for the popover's lifetime.
+		if facts.earliest >= start && facts.latest <= end {
+			if let totals = facts.totals { return (totals, facts.earliest) }
+			// Facts were cached under a different window shape that never needed totals — fetch them now.
+			let totals = try withArchive(archive) { uri in try PowerlogDatabase.totalSums(uri: uri) }
+			archiveCache[name] = ArchiveFacts(earliest: facts.earliest, latest: facts.latest, totals: totals)
+			return (totals, facts.earliest)
+		}
+
+		// Straddling the window start: genuinely window-dependent, so this always needs a fresh,
+		// clamped query. Only the oldest reachable archive ever straddles `start`, so this is at
+		// most one decompression per tick rather than one per archive.
+		let sums = try withArchive(archive) { uri in try PowerlogDatabase.sums(uri: uri, start: start, end: end) }
+		return (sums, facts.earliest)
 	}
 
 	/// Decompresses a `.gz` to a temp file via `/usr/bin/gunzip` (66–72 ms per archive).

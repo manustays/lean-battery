@@ -21,6 +21,14 @@ private let passthrough: @Sendable (URL) throws -> URL = { url in
 	return copy
 }
 
+/// Thread-safe decompression-call counter, so a test can prove the cache actually suppresses work.
+private final class CallCounter: @unchecked Sendable {
+	private let lock = NSLock()
+	private var count = 0
+	func increment() { lock.lock(); count += 1; lock.unlock() }
+	var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+}
+
 @Suite struct EnergyStoreTests {
 	@Test func shortRangeNeverTouchesArchives() async throws {
 		let tree = makeTree(
@@ -86,6 +94,37 @@ private let passthrough: @Sendable (URL) throws -> URL = { url in
 		let store = EnergyStore(livePath: tree.livePath, archivesDirectory: tree.directory, decompress: passthrough)
 		let result = try await store.sums(for: .week, now: 1000)
 		#expect(abs((result.sums["com.a"] ?? 0) - 100) < 0.001)
+	}
+
+	@Test func cacheAvoidsRepeatedDecompression() async throws {
+		// The archive lies wholly inside the .week window, so once its facts and totals are
+		// cached, a second identical call must not decompress it again.
+		let tree = makeTree(
+			live: [FixtureRow(start: 900, end: 1000, bundleId: "com.a", launchdName: "", energy: 100)],
+			archives: [("powerlog_2026-09-10_AAAA.PLSQL.gz", [FixtureRow(start: 800, end: 900, bundleId: "com.a", launchdName: "", energy: 50)])])
+		let counter = CallCounter()
+		let countingDecompress: @Sendable (URL) throws -> URL = { url in
+			counter.increment()
+			return try passthrough(url)
+		}
+		let store = EnergyStore(livePath: tree.livePath, archivesDirectory: tree.directory, decompress: countingDecompress)
+
+		let beforeFirst = counter.value
+		_ = try await store.sums(for: .week, now: 1000)
+		let firstCallDecompressions = counter.value - beforeFirst
+		#expect(firstCallDecompressions > 0)
+
+		let beforeSecond = counter.value
+		_ = try await store.sums(for: .week, now: 1000)
+		let secondCallDecompressions = counter.value - beforeSecond
+		#expect(secondCallDecompressions < firstCallDecompressions)
+		#expect(secondCallDecompressions == 0)
+
+		await store.clearCache()
+		let beforeThird = counter.value
+		_ = try await store.sums(for: .week, now: 1000)
+		let thirdCallDecompressions = counter.value - beforeThird
+		#expect(thirdCallDecompressions > secondCallDecompressions)
 	}
 
 	@Test func cacheIsClearedOnDemand() async throws {
