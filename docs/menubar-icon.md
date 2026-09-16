@@ -26,6 +26,8 @@ The fill is translucent and the % or plug is always drawn in one solid color (wh
 
 `StatusIcon` redraws only when the derived `IconSpec` or the menubar's light/dark appearance changes, so time-remaining changes never trigger drawing.
 
+Clicking the icon opens the [popover](popover.md).
+
 ## Data sources
 
 | Value | Source |
@@ -38,7 +40,7 @@ The fill is translucent and the % or plug is always drawn in one solid color (wh
 
 | Key (`com.manustays.slimbattery`) | Default | Meaning |
 |---|---|---|
-| `tempThresholdC` | 40 | Hot badge threshold in °C (UI arrives with the popover) |
+| `tempThresholdC` | 40 | Hot badge threshold in °C (set in the popover's Settings) |
 
 ## Build & run
 

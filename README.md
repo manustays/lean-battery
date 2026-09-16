@@ -33,12 +33,16 @@ The macOS battery icon with a percentage is wide, and on a notched MacBook menub
 - **High-temperature badge** — a red dot when the battery reaches your threshold (default 40 °C).
 - **Follows your menubar** — white on dark menubars, black on light ones.
 
-**In the popover (in development)**
+**In the popover (available now)**
 
-- Battery header: %, time left, power source and adapter wattage, live system power draw, temperature, Low Power Mode toggle.
+- Battery header: %, time left, power source and adapter wattage, live system power draw, temperature, and a Low Power Mode switch.
+- Collapsible **battery information**: health, condition, cycle count, capacity, voltage, adapter.
+- Settings: high-temperature threshold and launch at login.
+
+**Coming next**
+
 - **Apps using significant energy** with a `Now / 8h / 24h / 7d` range switch.
 - **Bluetooth device batteries** (headphones, mice, keyboards, controllers).
-- Collapsible **battery information**: health, cycle count, capacity, voltage, condition.
 - Optional **notifications**: up to 5 battery threshold alerts, power connected/disconnected, a floating pill below the notch, and a screen-edge glow for low battery.
 
 ## Requirements
@@ -80,6 +84,7 @@ swift test --filter IconRendererTests
 | Doc | What's in it |
 |-----|--------------|
 | [Menubar icon](docs/menubar-icon.md) | Icon states, how updates are triggered, data sources, settings keys, CPU footprint check |
+| [Popover](docs/popover.md) | Header values and sources, Battery Information, settings, Low Power Mode prompt, CPU behavior |
 
 ## How does it work
 
