@@ -1,23 +1,24 @@
 import AppKit
 import SlimBatteryCore
 
-/// Owns the menubar status item; redraws only when the visible spec or menubar appearance changes.
+/// Owns the menubar status item; redraws only when the visible spec or menubar appearance changes. A click calls `onClick`.
 @MainActor
-final class StatusIcon {
+final class StatusIcon: NSObject {
 	private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+	private let onClick: (NSStatusBarButton) -> Void
 	private var state: BatteryState?
 	private var drawnSpec: IconSpec?
 	private var drawnDark: Bool?
 	private var appearanceObservation: NSKeyValueObservation?
 
-	/// Creates the status item with a temporary Quit menu, showing a "—" placeholder until real battery data arrives.
-	init() {
-		// ponytail: Quit-only menu until the popover replaces it (Plan 2).
-		let menu = NSMenu()
-		menu.addItem(withTitle: "Quit SlimBattery", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-		statusItem.menu = menu
+	/// Creates the status item, showing a "—" placeholder until real battery data arrives.
+	init(onClick: @escaping (NSStatusBarButton) -> Void) {
+		self.onClick = onClick
+		super.init()
 		statusItem.button?.title = "—"
 		statusItem.button?.setAccessibilityLabel("Battery status unavailable")
+		statusItem.button?.target = self
+		statusItem.button?.action = #selector(buttonClicked(_:))
 		appearanceObservation = statusItem.button?.observe(\.effectiveAppearance) { [weak self] _, _ in
 			guard let self else { return }
 			MainActor.assumeIsolated { self.redrawIfNeeded() }
@@ -29,6 +30,11 @@ final class StatusIcon {
 		self.state = state
 		statusItem.button?.setAccessibilityLabel(state.accessibilityDescription)
 		redrawIfNeeded()
+	}
+
+	/// Forwards status item clicks.
+	@objc private func buttonClicked(_ sender: NSStatusBarButton) {
+		onClick(sender)
 	}
 
 	/// Redraws the button image when spec or appearance differs from what is on screen.
