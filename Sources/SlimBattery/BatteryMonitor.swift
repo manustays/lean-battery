@@ -2,15 +2,21 @@ import AppKit
 import IOKit.ps
 import SlimBatteryCore
 
-/// Publishes a BatteryState whenever power source, Low Power Mode, wake, or the temperature timer yields a change.
+/// Publishes a BatteryState whenever power source, Low Power Mode, wake, the temperature timer, or the hot threshold yields a change.
 @MainActor
 final class BatteryMonitor {
-	private let hotThresholdCelsius: Double
-	private let onChange: @MainActor (BatteryState) -> Void
-	private var lastState: BatteryState?
+	/// Temperature at or above which the state reports hot; changing it re-evaluates immediately.
+	var hotThresholdCelsius: Double {
+		didSet { refresh() }
+	}
 
-	/// Creates a monitor; call `start()` to begin observing.
-	init(hotThresholdCelsius: Double, onChange: @escaping @MainActor (BatteryState) -> Void) {
+	/// Latest published state, or nil before the first successful read.
+	private(set) var state: BatteryState?
+
+	private let onChange: @MainActor (_ previous: BatteryState?, _ current: BatteryState) -> Void
+
+	/// Creates a monitor; call `start()` to begin observing. `onChange` receives the previous and new state.
+	init(hotThresholdCelsius: Double, onChange: @escaping @MainActor (_ previous: BatteryState?, _ current: BatteryState) -> Void) {
 		self.hotThresholdCelsius = hotThresholdCelsius
 		self.onChange = onChange
 	}
@@ -44,16 +50,17 @@ final class BatteryMonitor {
 		guard let description = SystemPower.internalBatteryDescription() else { return }
 		let registry = SystemPower.smartBatteryProperty("Temperature").map { ["Temperature": $0] } ?? [:]
 		guard
-			let state = BatteryState.make(
+			let newState = BatteryState.make(
 				powerSource: description,
 				registry: registry,
 				isLowPowerMode: ProcessInfo.processInfo.isLowPowerModeEnabled,
 				hotThresholdCelsius: hotThresholdCelsius
 			),
-			state != lastState
+			newState != state
 		else { return }
-		lastState = state
-		onChange(state)
+		let previous = state
+		state = newState
+		onChange(previous, newState)
 	}
 
 	/// Calls `refresh()` on the main queue whenever `name` is posted.

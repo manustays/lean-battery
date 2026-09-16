@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 	func applicationDidFinishLaunching(_ notification: Notification) {
 		UserDefaults.standard.register(defaults: [DefaultsKey.hotThresholdCelsius: 40.0])
 		let statusIcon = StatusIcon()
-		let monitor = BatteryMonitor(hotThresholdCelsius: UserDefaults.standard.double(forKey: DefaultsKey.hotThresholdCelsius)) { state in
+		let monitor = BatteryMonitor(hotThresholdCelsius: UserDefaults.standard.double(forKey: DefaultsKey.hotThresholdCelsius)) { _, state in
 			statusIcon.update(state)
 		}
 		monitor.start()
