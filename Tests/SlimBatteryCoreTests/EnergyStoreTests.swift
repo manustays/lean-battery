@@ -30,6 +30,19 @@ private final class CallCounter: @unchecked Sendable {
 }
 
 @Suite struct EnergyStoreTests {
+	@Test func stalenessOnlySuppressesTheNowRange() {
+		// Staleness must hide only `Now` — it has no business hiding a week of valid archived
+		// history just because the live log has gone quiet.
+		let stale = EnergySums(sums: [:], coveredSeconds: 100, isStale: true)
+		#expect(stale.suppressesRows(for: .now))
+		#expect(!stale.suppressesRows(for: .eightHours))
+		#expect(!stale.suppressesRows(for: .day))
+		#expect(!stale.suppressesRows(for: .week))
+
+		let fresh = EnergySums(sums: [:], coveredSeconds: 100, isStale: false)
+		#expect(!fresh.suppressesRows(for: .now))
+	}
+
 	@Test func shortRangeNeverTouchesArchives() async throws {
 		let tree = makeTree(
 			live: [FixtureRow(start: 700, end: 1000, bundleId: "com.a", launchdName: "", energy: 300)],

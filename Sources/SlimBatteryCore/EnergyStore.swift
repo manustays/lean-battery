@@ -13,6 +13,13 @@ public struct EnergySums: Sendable, Equatable {
 		self.coveredSeconds = coveredSeconds
 		self.isStale = isStale
 	}
+
+	/// True when staleness should hide `range`'s rows. Staleness is a `Now`-only concept: it
+	/// exists so a quiet log doesn't present hours-old numbers as "now", and has no bearing on
+	/// whether archived history for a longer range is valid (spec §9).
+	public func suppressesRows(for range: EnergyRange) -> Bool {
+		range == .now && isStale
+	}
 }
 
 /// Reads energy from the live powerlog and, for long ranges, the daily archives (spec §8.3).
@@ -154,19 +161,24 @@ public actor EnergyStore {
 	public static func gunzip(_ url: URL) throws -> URL {
 		let output = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".PLSQL")
 		FileManager.default.createFile(atPath: output.path, contents: nil)
-		let handle = try FileHandle(forWritingTo: output)
-		defer { try? handle.close() }
-		let process = Process()
-		process.executableURL = URL(fileURLWithPath: "/usr/bin/gunzip")
-		process.arguments = ["-c", url.path]
-		process.standardOutput = handle
-		process.standardError = FileHandle.nullDevice
-		try process.run()
-		process.waitUntilExit()
-		guard process.terminationStatus == 0 else {
+		do {
+			let handle = try FileHandle(forWritingTo: output)
+			defer { try? handle.close() }
+			let process = Process()
+			process.executableURL = URL(fileURLWithPath: "/usr/bin/gunzip")
+			process.arguments = ["-c", url.path]
+			process.standardOutput = handle
+			process.standardError = FileHandle.nullDevice
+			try process.run()
+			process.waitUntilExit()
+			guard process.terminationStatus == 0 else {
+				try? FileManager.default.removeItem(at: output)
+				throw CocoaError(.fileReadCorruptFile)
+			}
+			return output
+		} catch {
 			try? FileManager.default.removeItem(at: output)
-			throw CocoaError(.fileReadCorruptFile)
+			throw error
 		}
-		return output
 	}
 }

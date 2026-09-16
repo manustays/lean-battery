@@ -133,6 +133,8 @@ final class PopoverModel {
 
 	/// Re-reads energy for the selected range on a background actor and publishes the result.
 	func refreshEnergy() {
+		// Refuse to run while the popover is closed (docs/popover.md: "nothing here runs").
+		guard timer != nil else { return }
 		energyGeneration += 1
 		let generation = energyGeneration
 		let range = energyRange
@@ -158,7 +160,7 @@ final class PopoverModel {
 			return
 		}
 		energyCoverage[range] = measured.coveredSeconds
-		guard !measured.isStale else {
+		guard !measured.suppressesRows(for: range) else {
 			energyState = .empty(range.emptyText)
 			return
 		}
