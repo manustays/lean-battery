@@ -125,6 +125,20 @@ private func standardRows() -> [FixtureRow] {
 		}
 	}
 
+	@Test func anchorThrowsNoDataOnEmptyTable() throws {
+		// MAX()/MIN() over zero rows still yields one row holding SQL NULL, not 0.0 — a schema-valid
+		// but empty database must not be silently reported as anchored at time zero.
+		let path = makeFixture(rows: [])
+		defer { try? FileManager.default.removeItem(atPath: path) }
+		let uri = PowerlogDatabase.readOnlyURI(path: path, immutable: false)
+		#expect(throws: PowerlogDatabase.Failure.noData) {
+			_ = try PowerlogDatabase.anchor(uri: uri)
+		}
+		#expect(throws: PowerlogDatabase.Failure.noData) {
+			_ = try PowerlogDatabase.earliest(uri: uri)
+		}
+	}
+
 	@Test func missingFileCannotOpen() {
 		let uri = PowerlogDatabase.readOnlyURI(path: "/nonexistent/nope.PLSQL", immutable: false)
 		#expect(throws: PowerlogDatabase.Failure.cannotOpen) {

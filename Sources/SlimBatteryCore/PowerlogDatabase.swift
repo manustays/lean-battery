@@ -12,6 +12,11 @@ public enum PowerlogDatabase {
 	public enum Failure: Error, Equatable {
 		case cannotOpen
 		case schemaMismatch(missing: [String])
+		/// A scalar query's single row held SQL NULL — the aggregate had no rows to aggregate.
+		case noData
+		/// `sqlite3_step` returned something other than `SQLITE_ROW`/`SQLITE_DONE` mid-scan
+		/// (e.g. `SQLITE_BUSY`, `SQLITE_IOERR`): the result set is incomplete and must not be trusted.
+		case queryFailed(code: Int32)
 	}
 
 	static let table = "PLCoalitionAgent_EventInterval_CoalitionInterval"
@@ -112,6 +117,8 @@ public enum PowerlogDatabase {
 		guard sqlite3_prepare_v2(handle, sql, -1, &statement, nil) == SQLITE_OK else { throw Failure.cannotOpen }
 		defer { sqlite3_finalize(statement) }
 		guard sqlite3_step(statement) == SQLITE_ROW else { throw Failure.cannotOpen }
+		// MAX()/MIN() over zero rows still yields one row, holding SQL NULL rather than 0.0.
+		guard sqlite3_column_type(statement, 0) != SQLITE_NULL else { throw Failure.noData }
 		return sqlite3_column_double(statement, 0)
 	}
 
@@ -124,10 +131,14 @@ public enum PowerlogDatabase {
 		defer { sqlite3_finalize(statement) }
 		bind(statement)
 		var sums: [String: Double] = [:]
-		while sqlite3_step(statement) == SQLITE_ROW {
-			guard let text = sqlite3_column_text(statement, 0) else { continue }
-			sums[String(cString: text), default: 0] += sqlite3_column_double(statement, 1)
+		var step = sqlite3_step(statement)
+		while step == SQLITE_ROW {
+			if let text = sqlite3_column_text(statement, 0) {
+				sums[String(cString: text), default: 0] += sqlite3_column_double(statement, 1)
+			}
+			step = sqlite3_step(statement)
 		}
+		guard step == SQLITE_DONE else { throw Failure.queryFailed(code: step) }
 		return sums
 	}
 }
