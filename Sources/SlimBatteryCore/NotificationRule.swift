@@ -13,8 +13,11 @@ public struct NotificationRule: Codable, Equatable, Identifiable, Sendable {
 	/// Thresholds the stepper allows.
 	public static let thresholdRange = 1...99
 
+	/// Unique identifier for this rule.
 	public var id: UUID
+	/// Whether this rule currently triggers notifications.
 	public var isEnabled: Bool
+	/// Which side of the threshold fires.
 	public var direction: Direction
 	/// Charge level, in percent, that fires the rule.
 	public var threshold: Int
@@ -41,9 +44,11 @@ public struct NotificationRule: Codable, Equatable, Identifiable, Sendable {
 	}
 
 	/// What a fresh install starts with: one `Below 20%` rule with glow and sound on (spec §6.1).
-	public static var firstLaunchDefaults: [NotificationRule] {
-		[NotificationRule(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, direction: .below, threshold: 20, glow: true, sound: true)]
-	}
+	/// A stored property, not computed: Swift initialises it once per process, so repeated reads
+	/// (and the decode fallback) return the same `id` and compare equal, while the id stays unique.
+	public static let firstLaunchDefaults: [NotificationRule] = [
+		NotificationRule(direction: .below, threshold: 20, glow: true, sound: true)
+	]
 
 	/// Decodes stored rules; unreadable data falls back to the first-launch set and extras are dropped (spec §9).
 	public static func decode(_ data: Data?) -> [NotificationRule] {
