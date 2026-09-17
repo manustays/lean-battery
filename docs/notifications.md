@@ -107,9 +107,33 @@ An unrecognised `pillStyle` (or none at all) reads back as `medium`. If the stor
 
 ## CPU behavior
 
-Pill-and-glow CPU has not been measured yet. Once a build is available with Accessibility access to drive Preview and hold a notification on screen, it needs to clear two bars, matching `docs/popover.md`'s method:
+Nothing runs between notifications: no timer, no polling, no window. A notification costs one non-repeating dismissal timer while it is on screen, and the glow's pulse is a `CABasicAnimation` the window server renders, so the app does no per-frame work for it.
 
-- **Mean CPU under 2%** while a notification (pill, or pill + glow) is visible on screen.
-- **Idle wakeups back to the popover-closed baseline** once the notification is gone — no elevated wakeups or CPU left running after dismissal.
+Measured 2026-09-17 on the development Mac with `scripts/cpu-check.sh`, notch style, pill and glow both visible:
 
-_Measurements to be filled in here once taken._
+| Case | Result | Bar |
+|---|---|---|
+| Notification visible, popover closed | `mean_cpu=0.63% idle_wakeups_per_min=2.0 memory=44M` | mean < 2% — **passes**, with 1.37 points of headroom |
+| Nothing showing, popover closed | `mean_cpu=0.00% idle_wakeups_per_min=0.0` | back to the cold-idle baseline — **passes** |
+
+To hold a notification up long enough to sample, write a duration past the slider's range while the app is quit — it is read from UserDefaults at launch and never clamped — then launch, press **Preview notification**, close the popover, and leave the machine alone:
+
+```
+defaults write com.manustays.slimbattery notificationDuration -int 150
+```
+
+Delete the key again afterwards, or the next launch keeps the inflated duration.
+
+### Reveal animation under stress
+
+A separate run clicked **Preview** roughly every 3 s for a minute — about 20 full reveal-and-collapse cycles of the notch style, with the settings popover open the whole time to reach the button: `mean_cpu=2.87% idle_wakeups_per_min=6.0`. Subtracting the popover's own measured 0.81% on the `Now` range leaves roughly 2% for twenty animations in sixty seconds.
+
+That is far past any real usage — a threshold rule fires a handful of times a day, not twenty times a minute — and it is not the figure the acceptance bar refers to. It is recorded because it is the cost of the reveal itself, and because a future change to the animation should be compared against it.
+
+### A note on where the cost lands
+
+`scripts/cpu-check.sh` samples the `SlimBattery` process only. The glow's pulse and the notch style's mask are composited by **WindowServer**, so some of their real cost sits in a process these numbers do not include. The spec's bar is mean *app* CPU, so the results above are valid against it, but they are not the whole system cost of showing a notification.
+
+### Memory
+
+Both runs above report ~44M, against a documented cold-idle figure of 14M in `docs/popover.md`. That is popover residue, not the notification's: reaching **Preview notification** means opening the popover, and working memory is released a couple of minutes after it closes, not immediately. The idle run was taken right after the pill was dismissed, inside that window. Worth re-checking on a session that never opens the popover — spec §10 puts the closed-popover bar at under 30M, and 44M sitting there permanently would miss it.
