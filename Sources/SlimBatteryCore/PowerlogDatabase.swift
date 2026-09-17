@@ -35,6 +35,22 @@ public enum PowerlogDatabase {
 	/// The `who` key: bundle id when present, launchd name otherwise.
 	private static let whoExpression = "COALESCE(NULLIF(BundleId, ''), LaunchdName)"
 
+	/// SQL for `anchor(uri:)` / `liveWindow(uri:rangeSeconds:)`: the latest `timestampEnd`.
+	private static let anchorSQL = "SELECT MAX(timestampEnd) FROM \(table)"
+	/// SQL for `earliest(uri:)` / `liveWindow(uri:rangeSeconds:)`: the earliest `timestamp`.
+	private static let earliestSQL = "SELECT MIN(timestamp) FROM \(table)"
+	/// SQL for `sums(uri:start:end:)` / `liveWindow(uri:rangeSeconds:)`: shared so the two can
+	/// never drift apart — one clamped, prorated expression, bound to `:start`/`:end`.
+	private static let sumsSQL = """
+	SELECT \(whoExpression) AS who,
+	       SUM(\(energyExpression) *
+	           (MAX(0.0, MIN(timestampEnd, :end) - MAX(timestamp, :start)) / (timestampEnd - timestamp))) AS nj
+	FROM \(table)
+	WHERE timestampEnd > :start AND timestamp < :end AND timestampEnd > timestamp
+	GROUP BY who
+	HAVING nj > 0
+	"""
+
 	/// Builds a read-only SQLite URI. Archives are immutable; the live database is WAL and needs `mode=ro`.
 	public static func readOnlyURI(path: String, immutable: Bool) -> String {
 		"file:\(path)?\(immutable ? "immutable=1" : "mode=ro")"
@@ -42,26 +58,17 @@ public enum PowerlogDatabase {
 
 	/// Latest `timestampEnd` — the window anchor.
 	public static func anchor(uri: String) throws -> Double {
-		try scalar(uri: uri, sql: "SELECT MAX(timestampEnd) FROM \(table)")
+		try scalar(uri: uri, sql: anchorSQL)
 	}
 
 	/// Earliest `timestamp` — how far back this database reaches.
 	public static func earliest(uri: String) throws -> Double {
-		try scalar(uri: uri, sql: "SELECT MIN(timestamp) FROM \(table)")
+		try scalar(uri: uri, sql: earliestSQL)
 	}
 
 	/// Per-`who` energy in nanojoules over `[start, end]`, prorated by each interval's overlap.
 	public static func sums(uri: String, start: Double, end: Double) throws -> [String: Double] {
-		let sql = """
-		SELECT \(whoExpression) AS who,
-		       SUM(\(energyExpression) *
-		           (MAX(0.0, MIN(timestampEnd, :end) - MAX(timestamp, :start)) / (timestampEnd - timestamp))) AS nj
-		FROM \(table)
-		WHERE timestampEnd > :start AND timestamp < :end AND timestampEnd > timestamp
-		GROUP BY who
-		HAVING nj > 0
-		"""
-		return try grouped(uri: uri, sql: sql) { statement in
+		try grouped(uri: uri, sql: sumsSQL) { statement in
 			sqlite3_bind_double(statement, sqlite3_bind_parameter_index(statement, ":start"), start)
 			sqlite3_bind_double(statement, sqlite3_bind_parameter_index(statement, ":end"), end)
 		}
@@ -78,6 +85,33 @@ public enum PowerlogDatabase {
 		HAVING nj > 0
 		"""
 		return try grouped(uri: uri, sql: sql) { _ in }
+	}
+
+	/// Anchor, earliest coverage, and clamped/prorated sums over the trailing `rangeSeconds`
+	/// window, from a single open and a single schema guard instead of three (`anchor(uri:)` +
+	/// `earliest(uri:)` + `sums(uri:start:end:)` each pay their own ~3 ms open/guard cost).
+	public struct LiveWindow: Sendable {
+		/// Latest `timestampEnd`, as `anchor(uri:)` would return.
+		public var anchor: Double
+		/// Earliest `timestamp`, as `earliest(uri:)` would return.
+		public var earliest: Double
+		/// Per-`who` energy over `[anchor - rangeSeconds, anchor]`, as `sums(uri:start:end:)` would return.
+		public var sums: [String: Double]
+	}
+
+	/// Combined read behind `LiveWindow`: opens `uri` once, runs the schema guard once, and
+	/// derives the window exactly as the three separate calls would (`start = anchor - rangeSeconds`).
+	public static func liveWindow(uri: String, rangeSeconds: Double) throws -> LiveWindow {
+		let handle = try open(uri)
+		defer { sqlite3_close(handle) }
+		let anchor = try scalar(handle: handle, sql: anchorSQL)
+		let earliest = try scalar(handle: handle, sql: earliestSQL)
+		let start = anchor - rangeSeconds
+		let sums = try grouped(handle: handle, sql: sumsSQL) { statement in
+			sqlite3_bind_double(statement, sqlite3_bind_parameter_index(statement, ":start"), start)
+			sqlite3_bind_double(statement, sqlite3_bind_parameter_index(statement, ":end"), anchor)
+		}
+		return LiveWindow(anchor: anchor, earliest: earliest, sums: sums)
 	}
 
 	// MARK: - Plumbing
@@ -116,10 +150,15 @@ public enum PowerlogDatabase {
 		return names
 	}
 
-	/// Runs a one-value query.
+	/// Runs a one-value query, opening and closing the database around it.
 	private static func scalar(uri: String, sql: String) throws -> Double {
 		let handle = try open(uri)
 		defer { sqlite3_close(handle) }
+		return try scalar(handle: handle, sql: sql)
+	}
+
+	/// Runs a one-value query against an already-open, already-schema-checked handle.
+	private static func scalar(handle: OpaquePointer, sql: String) throws -> Double {
 		var statement: OpaquePointer?
 		let prepared = sqlite3_prepare_v2(handle, sql, -1, &statement, nil)
 		guard prepared == SQLITE_OK else { throw Failure.queryFailed(code: prepared) }
@@ -131,10 +170,15 @@ public enum PowerlogDatabase {
 		return sqlite3_column_double(statement, 0)
 	}
 
-	/// Runs a `who → nanojoules` query.
+	/// Runs a `who → nanojoules` query, opening and closing the database around it.
 	private static func grouped(uri: String, sql: String, bind: (OpaquePointer?) -> Void) throws -> [String: Double] {
 		let handle = try open(uri)
 		defer { sqlite3_close(handle) }
+		return try grouped(handle: handle, sql: sql, bind: bind)
+	}
+
+	/// Runs a `who → nanojoules` query against an already-open, already-schema-checked handle.
+	private static func grouped(handle: OpaquePointer, sql: String, bind: (OpaquePointer?) -> Void) throws -> [String: Double] {
 		var statement: OpaquePointer?
 		guard sqlite3_prepare_v2(handle, sql, -1, &statement, nil) == SQLITE_OK else { throw Failure.cannotOpen }
 		defer { sqlite3_finalize(statement) }

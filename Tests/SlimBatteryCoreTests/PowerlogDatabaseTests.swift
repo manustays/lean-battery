@@ -153,6 +153,27 @@ private func standardRows() -> [FixtureRow] {
 		}
 	}
 
+	@Test func liveWindowMatchesTheThreeSeparateCalls() throws {
+		let path = makeFixture(rows: standardRows())
+		defer { try? FileManager.default.removeItem(atPath: path) }
+		let uri = PowerlogDatabase.readOnlyURI(path: path, immutable: false)
+		let rangeSeconds = 300.0 // anchor 1000 - 300 = 700, matching sumsAreProratedByOverlapAndMergedByWho's window.
+		let window = try PowerlogDatabase.liveWindow(uri: uri, rangeSeconds: rangeSeconds)
+		#expect(window.anchor == (try PowerlogDatabase.anchor(uri: uri)))
+		#expect(window.earliest == (try PowerlogDatabase.earliest(uri: uri)))
+		let separateSums = try PowerlogDatabase.sums(uri: uri, start: window.anchor - rangeSeconds, end: window.anchor)
+		#expect(window.sums == separateSums)
+	}
+
+	@Test func liveWindowThrowsNoDataOnEmptyTable() throws {
+		let path = makeFixture(rows: [])
+		defer { try? FileManager.default.removeItem(atPath: path) }
+		let uri = PowerlogDatabase.readOnlyURI(path: path, immutable: false)
+		#expect(throws: PowerlogDatabase.Failure.noData) {
+			_ = try PowerlogDatabase.liveWindow(uri: uri, rangeSeconds: 300)
+		}
+	}
+
 	@Test func missingFileCannotOpen() {
 		let uri = PowerlogDatabase.readOnlyURI(path: "/nonexistent/nope.PLSQL", immutable: false)
 		#expect(throws: PowerlogDatabase.Failure.cannotOpen) {

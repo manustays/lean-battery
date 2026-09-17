@@ -87,19 +87,21 @@ public actor EnergyStore {
 	/// Energy per `who` for `range`, anchored to the newest logged moment rather than to `now`.
 	public func sums(for range: EnergyRange, now: Double) throws -> EnergySums {
 		let liveURI = PowerlogDatabase.readOnlyURI(path: livePath, immutable: false)
-		let anchor = try PowerlogDatabase.anchor(uri: liveURI)
-		let liveEarliest = try PowerlogDatabase.earliest(uri: liveURI)
+		// One open + one schema guard instead of three (`anchor`, `earliest`, `sums` used to each pay
+		// their own).
+		let window = try PowerlogDatabase.liveWindow(uri: liveURI, rangeSeconds: range.seconds)
+		let anchor = window.anchor
 		let start = anchor - range.seconds
 		// The anchor often runs ahead of the wall clock; only a log that has gone quiet is stale.
 		let isStale = (now - anchor) > stalenessLimit
 
-		var totals = try PowerlogDatabase.sums(uri: liveURI, start: start, end: anchor)
-		var earliestSeen = max(start, liveEarliest)
+		var totals = window.sums
+		var earliestSeen = max(start, window.earliest)
 
 		// Archives are only worth opening when the window reaches back past the live database.
-		if start < liveEarliest {
+		if start < window.earliest {
 			for archive in archiveFiles() {
-				guard let contribution = try? archiveSums(archive, start: start, end: liveEarliest) else { continue }
+				guard let contribution = try? archiveSums(archive, start: start, end: window.earliest) else { continue }
 				for (who, energy) in contribution.sums {
 					totals[who, default: 0] += energy
 				}
