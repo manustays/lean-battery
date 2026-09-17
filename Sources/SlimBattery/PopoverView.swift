@@ -1,7 +1,7 @@
 import SwiftUI
 import SlimBatteryCore
 
-/// Compact popover (spec §5): header, Battery Information, footer; swaps to settings in place.
+/// Compact popover (spec §5): header, Battery Information, footer; routes in place to settings or notifications.
 struct PopoverView: View {
 	@Bindable var model: PopoverModel
 

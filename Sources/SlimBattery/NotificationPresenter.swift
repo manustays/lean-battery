@@ -17,6 +17,7 @@ final class NotificationPresenter {
 	/// Keeps the settings so every event uses the current duration, and closes both windows if the displays change (spec §9).
 	init(settings: NotificationSettings) {
 		self.settings = settings
+		// ponytail: lives for the app's lifetime, so this observer and its token are never removed.
 		NotificationCenter.default.addObserver(
 			forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
 		) { [weak self] _ in

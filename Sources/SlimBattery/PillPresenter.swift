@@ -44,6 +44,14 @@ final class PillPresenter {
 		panel.isOpaque = false
 		panel.hasShadow = false
 		panel.hidesOnDeactivate = false
+		// NSPanel already defaults isReleasedWhenClosed to false (unlike NSWindow); set it explicitly so
+		// this presenter and GlowPresenter state the same intent rather than relying on a type default.
+		panel.isReleasedWhenClosed = false
+		// ultraThinMaterial bridges to an NSVisualEffectView that follows the host NSAppearance, not the
+		// SwiftUI .environment(\.colorScheme, .dark) PillView sets — pin it so the white title stays legible.
+		panel.appearance = NSAppearance(named: .darkAqua)
+		// The system's default order-front/close fade would compound with the hand-rolled slide+fade below.
+		panel.animationBehavior = .none
 		panel.contentView = hosting
 		panel.alphaValue = 0
 		// Start 14 pt higher and fall into place.

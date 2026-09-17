@@ -12,8 +12,11 @@ struct PillView: View {
 	/// Transparent margin around the capsule so the drop shadow is not clipped by the window.
 	static let shadowInset: CGFloat = 20
 
+	/// The battery glyph shown at the capsule's leading edge.
 	let icon: NSImage
+	/// The title and detail text to display.
 	let content: PillContent
+	/// Called when the user taps the capsule.
 	let onDismiss: () -> Void
 
 	var body: some View {

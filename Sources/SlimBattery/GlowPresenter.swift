@@ -32,9 +32,16 @@ final class GlowPresenter {
 		window.isOpaque = false
 		window.hasShadow = false
 		window.ignoresMouseEvents = true
+		// The system's default order-front/close fade would compound with the hand-rolled fade below.
+		window.animationBehavior = .none
+		// NSWindow (unlike NSPanel) defaults isReleasedWhenClosed to true: AppKit would release the
+		// object on close() on top of ARC's own release from `self.window = nil` in hide(), an over-release.
+		window.isReleasedWhenClosed = false
 		let view = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
-		view.wantsLayer = true
+		// Assign the custom layer before wantsLayer so the view is layer-hosting (we own the layer),
+		// not layer-backed (AppKit owns it and may reset it).
 		view.layer = Self.glowLayer(size: screen.frame.size)
+		view.wantsLayer = true
 		window.contentView = view
 		window.setFrame(screen.frame, display: true)
 		window.orderFrontRegardless()

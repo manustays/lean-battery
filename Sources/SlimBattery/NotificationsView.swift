@@ -3,6 +3,7 @@ import SlimBatteryCore
 
 /// Notification preferences (spec §6.1): up to five battery rules, power-change alerts, duration, and a preview.
 struct NotificationsView: View {
+	/// The popover's shared model; only `previewNotification()` is used here.
 	@Bindable var model: PopoverModel
 	/// Bound separately from `model` so the rule rows get direct bindings into the store.
 	@Bindable var settings: NotificationSettings
@@ -87,11 +88,17 @@ struct NotificationsView: View {
 
 /// One rule row: enable switch, direction, threshold stepper, glow and sound chips, delete (spec §6.1).
 private struct RuleRow: View {
+	/// The rule this row edits.
 	@Binding var rule: NotificationRule
+	/// Called when the user taps the trash button.
 	let onDelete: () -> Void
 
 	var body: some View {
-		HStack(spacing: 6) {
+		// spacing 4 (was 6) and a sized-to-fit Picker (was a fixed 130 pt, wide enough for either
+		// label at all times) keep a below-direction row — the widest, since it adds the Glow chip —
+		// inside the popover's 292 pt content width. See NotificationsView.swift width arithmetic in
+		// the fix report for the full budget.
+		HStack(spacing: 4) {
 			Toggle("", isOn: $rule.isEnabled)
 				.toggleStyle(.switch)
 				.controlSize(.mini)
@@ -101,10 +108,13 @@ private struct RuleRow: View {
 				Text("Above (charging)").tag(NotificationRule.Direction.above)
 			}
 			.labelsHidden()
-			.frame(width: 130)
-			Text("\(rule.threshold)%").monospacedDigit().frame(width: 34, alignment: .trailing)
+			.pickerStyle(.menu)
+			.controlSize(.small)
+			.fixedSize()
+			Text("\(rule.threshold)%").monospacedDigit().frame(width: 30, alignment: .trailing)
 			Stepper("", value: $rule.threshold, in: NotificationRule.thresholdRange)
 				.labelsHidden()
+				.controlSize(.small)
 			if rule.direction == .below {
 				ChipToggle(title: "Glow", isOn: $rule.glow)
 			}
@@ -122,7 +132,9 @@ private struct RuleRow: View {
 
 /// Small on/off chip used for the Glow and Sound options.
 private struct ChipToggle: View {
+	/// The chip's label, e.g. "Glow" or "Sound".
 	let title: String
+	/// Whether the chip is currently on.
 	@Binding var isOn: Bool
 
 	var body: some View {

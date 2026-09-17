@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Inline settings (spec §5.5): hot threshold and launch at login.
+/// Inline settings (spec §5.5): hot threshold, launch at login, and the `Notifications ›` row.
 struct SettingsView: View {
 	@Bindable var model: PopoverModel
 
