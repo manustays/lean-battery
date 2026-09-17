@@ -109,16 +109,16 @@ An unrecognised `pillStyle` (or none at all) reads back as `medium`. If the stor
 
 Nothing runs between notifications: no timer, no polling, no window. A notification costs one non-repeating dismissal timer while it is on screen, and the glow's pulse is a `CABasicAnimation` the window server renders, so the app does no per-frame work for it.
 
-Measured 2026-09-17 on the development Mac with `scripts/cpu-check.sh`, notch style, pill and glow both visible:
+Measured 2026-09-17 on the development Mac with `scripts/cpu-check.sh`, notch style, pill and glow both visible, under `caffeinate -di`:
 
 | Case | Result | Bar |
 |---|---|---|
-| Notification visible, popover closed | `mean_cpu=0.63% idle_wakeups_per_min=2.0 memory=44M` — **not trustworthy, see below** | mean < 2% |
+| Notification visible, popover closed | `mean_cpu=0.01% idle_wakeups_per_min=0.0 memory=44M` | mean < 2% — **passes** |
 | Nothing showing, popover closed | `mean_cpu=0.00% idle_wakeups_per_min=0.0` | back to the cold-idle baseline — **passes** |
 
-**The visible-notification run is invalid and needs repeating.** The display slept part-way through it and was woken and unlocked. With the display asleep the window server composites nothing, so the app idles and the mean is pulled down by an unknown amount; the wake also posts `NSWorkspace.didWakeNotification`, which triggers a battery refresh and may account for some of those wakeups. The pill's 150 s duration may additionally have expired while the screen was off, leaving part of the window measuring nothing at all. Treat 0.63% as a floor, not a result.
+A visible notification costs the app essentially nothing, which is what the design intends: the dismissal timer is one-shot and does not fire inside the sample, the content never changes so nothing redraws, and the glow's pulse belongs to the window server. A *pending* timer does not wake the process, hence zero idle wakeups. The pill was confirmed still on screen when the sampler finished — without that check the figure is indistinguishable from the app sitting idle with no notification at all.
 
-Hold sleep off for the whole sample when repeating it:
+**Hold sleep off for the whole run.** An earlier attempt let the display sleep and was woken with a fingerprint unlock mid-sample, and read `0.63%` — the redraw on wake plus the `NSWorkspace.didWakeNotification` → `BatteryMonitor.refresh` it triggers are real work, and they landed inside the window. A sample that needs two untouched minutes is exactly long enough for the display to sleep, so:
 
 ```
 (sleep 25; caffeinate -di scripts/cpu-check.sh 120)
@@ -144,4 +144,4 @@ That is far past any real usage — a threshold rule fires a handful of times a 
 
 ### Memory
 
-Both runs above report ~44M, against a documented cold-idle figure of 14M in `docs/popover.md`. That is popover residue, not the notification's: reaching **Preview notification** means opening the popover, and working memory is released a couple of minutes after it closes, not immediately. The idle run was taken right after the pill was dismissed, inside that window. Worth re-checking on a session that never opens the popover — spec §10 puts the closed-popover bar at under 30M, and 44M sitting there permanently would miss it.
+Both runs above report ~44M, against the 14M cold idle in `docs/popover.md`. That is popover residue rather than the notification's own cost, and it is unavoidable in this measurement: reaching **Preview notification** means opening the popover, and working memory is released a couple of minutes after it closes, not immediately. The closed-popover memory bar (spec §10, under 30M) is the one already measured at 14M in `docs/popover.md` on a session that never opened the popover; nothing here displaces it.
