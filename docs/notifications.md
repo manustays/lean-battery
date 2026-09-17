@@ -27,11 +27,14 @@ Four choices for how the pill is drawn:
 | Style | What it looks like |
 |---|---|
 | Small | The default capsule at 0.85× — text, icon, padding and width all scale together |
+
+The battery glyph is rendered at 11 × 22 pt, so that is the largest it is ever drawn: Small shrinks it, and Large grows the text and the box but leaves the glyph at native size rather than upscaling a bitmap.
+
 | Default | The standard floating capsule |
 | Large | The same capsule at 1.2× |
-| Notch | Flush against the screen's top edge, opaque black, square top corners and rounded bottom ones, so on a MacBook it reads as a body grown out of the display's notch |
+| Notch | Hangs from the bottom edge of the display's notch, opaque black, square top corners and rounded bottom ones, so it reads as a body grown out of the notch |
 
-Notch is drawn on every display, not just notched ones. On the built-in screen it continues the real notch (its reveal starts at the notch's true width, read from the screen's auxiliary top areas); on an external display it starts from a 180 pt stub and reads as a floating black island. Instead of sliding down, it reveals outward and downward over 0.28 s and collapses back in 0.22 s.
+Notch is drawn on every display, not just notched ones. The notch is a physical cutout with no pixels behind it, so the body hangs from its lower edge rather than the screen's top edge; on a display without one there is no inset and the body sits at the very top. On the built-in screen the reveal starts at the notch's true width (read from the screen's auxiliary top areas); on an external display it starts from a 180 pt stub and reads as a floating black island. Instead of sliding down, it reveals outward and downward over 0.28 s and collapses back in 0.22 s.
 
 ### Preview
 
@@ -70,7 +73,7 @@ One capsule with the current battery icon, a title, and a detail line:
 
 Time is written as `38m` under an hour, otherwise `4h 05m`.
 
-A below-rule pill — the only event that is genuinely bad news — carries a red border tint (`#FF453A` at 55 %) instead of the usual white 14 %, matching the glow's colour. Every other event keeps the neutral border. Nothing else about the pill changes: same material, same shadow, same text.
+A below-rule pill — the only event that is genuinely bad news — carries a red border tint (`#FF453A` at 55 %) instead of the usual white 14 %, matching the glow's colour. Every other event keeps the neutral border, as does the Notch style at all times: a coloured outline there breaks the illusion that the body is part of the bezel. Nothing else about the pill changes: same material, same shadow, same text.
 
 The pill's size and placement follow the **Style** setting above. In the three floating styles it appears centered, 8 pt below the menubar/notch band, on whichever screen the pointer is on (falling back to the main screen). It floats above fullscreen apps and follows you across Spaces. It slides down and fades in over a quarter second, stays for the duration set in the settings page, then slides up and fades out the same way. The Notch style instead sits flush to the top edge and reveals out of the notch, as described above. If a new event fires while a pill is already showing, its content and size update in place — no stacking, and the entrance animation doesn't replay. **Clicking the pill dismisses it and its glow immediately** and cancels the remaining dwell time. Changing display configuration (e.g. unplugging a monitor) also closes both instantly, without the exit animation.
 

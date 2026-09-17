@@ -44,12 +44,18 @@ struct PillView: View {
 			minWidth: metrics.minimumWidth, maxWidth: metrics.maximumWidth,
 			minHeight: metrics.height, maxHeight: metrics.height)
 		.background(background, in: shape)
-		.overlay(shape.strokeBorder(isAlert ? Self.alertBorder : Self.normalBorder, lineWidth: 1))
+		.overlay(shape.strokeBorder(borderColor, lineWidth: 1))
 		.shadow(color: .black.opacity(0.35), radius: 24, x: 0, y: 8)
 		.environment(\.colorScheme, .dark)
 		.contentShape(shape)
 		.onTapGesture(perform: onDismiss)
 		.padding(Self.shadowInset)
+	}
+
+	/// A low-battery alert tints the border red — except in the notch style, where a coloured outline
+	/// breaks the illusion that the body is part of the bezel.
+	private var borderColor: Color {
+		isAlert && !metrics.hugsTopEdge ? Self.alertBorder : Self.normalBorder
 	}
 
 	/// The notch style is opaque black so it reads as an extension of the display's own bezel;

@@ -122,7 +122,7 @@ final class PillPresenter {
 		let height = metrics.height + inset * 2
 		let bodyTop: CGFloat
 		if metrics.hugsTopEdge {
-			bodyTop = screen.frame.maxY
+			bodyTop = notchBottom(on: screen)
 		} else {
 			// The menubar/notch band: safe area on a notched display, otherwise the menubar or status bar height.
 			let topInset = max(
@@ -146,12 +146,19 @@ final class PillPresenter {
 		}
 		let inset = PillView.shadowInset
 		let width = notchWidth(on: screen) + inset * 2
-		let bodyHeight = max(screen.safeAreaInsets.top, 24)
+		// A sliver the width of the notch, so the body looks like it unrolls from underneath it.
+		let bodyHeight: CGFloat = 6
 		return NSRect(
 			x: (screen.frame.midX - width / 2).rounded(),
-			y: (screen.frame.maxY - bodyHeight - inset).rounded(),
+			y: (notchBottom(on: screen) - bodyHeight - inset).rounded(),
 			width: width,
 			height: bodyHeight + inset * 2)
+	}
+
+	/// The y the notch style hangs from. The notch is a physical cutout with no pixels behind it, so the
+	/// body starts at its lower edge; a display without one has no inset and the body sits at the very top.
+	private static func notchBottom(on screen: NSScreen) -> CGFloat {
+		screen.frame.maxY - screen.safeAreaInsets.top
 	}
 
 	/// Width of the display's physical notch, or a stub of the same order on a display without one.
