@@ -113,8 +113,16 @@ Measured 2026-09-17 on the development Mac with `scripts/cpu-check.sh`, notch st
 
 | Case | Result | Bar |
 |---|---|---|
-| Notification visible, popover closed | `mean_cpu=0.63% idle_wakeups_per_min=2.0 memory=44M` | mean < 2% — **passes**, with 1.37 points of headroom |
+| Notification visible, popover closed | `mean_cpu=0.63% idle_wakeups_per_min=2.0 memory=44M` — **not trustworthy, see below** | mean < 2% |
 | Nothing showing, popover closed | `mean_cpu=0.00% idle_wakeups_per_min=0.0` | back to the cold-idle baseline — **passes** |
+
+**The visible-notification run is invalid and needs repeating.** The display slept part-way through it and was woken and unlocked. With the display asleep the window server composites nothing, so the app idles and the mean is pulled down by an unknown amount; the wake also posts `NSWorkspace.didWakeNotification`, which triggers a battery refresh and may account for some of those wakeups. The pill's 150 s duration may additionally have expired while the screen was off, leaving part of the window measuring nothing at all. Treat 0.63% as a floor, not a result.
+
+Hold sleep off for the whole sample when repeating it:
+
+```
+(sleep 25; caffeinate -di scripts/cpu-check.sh 120)
+```
 
 To hold a notification up long enough to sample, write a duration past the slider's range while the app is quit — it is read from UserDefaults at launch and never clamped — then launch, press **Preview notification**, close the popover, and leave the machine alone:
 
