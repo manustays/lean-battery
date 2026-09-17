@@ -154,21 +154,32 @@ final class PopoverModel {
 	}
 
 	/// Turns a completed read into display state (spec §5.2, §9).
+	/// Every assignment is guarded like `header`/`info` above: without it, `@Observable` would
+	/// fire on every 5 s tick even when the state is unchanged, re-rendering the whole energy
+	/// section (and re-running `AppCatalog.icon(for:)` for every visible row).
 	private func apply(_ outcome: Result<EnergySums, Error>, for range: EnergyRange) {
 		guard case .success(let measured) = outcome else {
-			energyState = .unavailable
+			if energyState != .unavailable {
+				energyState = .unavailable
+			}
 			return
 		}
 		energyCoverage[range] = measured.coveredSeconds
 		guard !measured.suppressesRows(for: range) else {
-			energyState = .empty(range.emptyText)
+			let newState = EnergyState.empty(range.emptyText)
+			if energyState != newState {
+				energyState = newState
+			}
 			return
 		}
 		let rows = EnergyAggregator.rows(
 			sums: measured.sums,
 			displayName: AppCatalog.displayName(for:),
 			isApplication: AppCatalog.isApplication(_:))
-		energyState = rows.isEmpty ? .empty(range.emptyText) : .rows(rows)
+		let newState: EnergyState = rows.isEmpty ? .empty(range.emptyText) : .rows(rows)
+		if energyState != newState {
+			energyState = newState
+		}
 	}
 
 	/// Runs the admin-prompt toggle; the header follows the real state via the monitor's notification.
