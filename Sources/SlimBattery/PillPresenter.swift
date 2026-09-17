@@ -31,8 +31,9 @@ final class PillPresenter {
 
 	/// Shows `content` in the style `metrics` describes; a visible pill is replaced in place,
 	/// without replaying the entrance (spec §6.3).
-	func show(content: PillContent, icon: NSImage, metrics: PillMetrics, isAlert: Bool) {
+	func show(content: PillContent, icon: NSImage, style: PillStyle, isAlert: Bool) {
 		guard let screen = Self.activeScreen() else { return }
+		let metrics = Self.metrics(for: style, on: screen)
 		let view = PillView(icon: icon, content: content, metrics: metrics, isAlert: isAlert) { [weak self] in
 			self?.onDismiss()
 		}
@@ -119,10 +120,12 @@ final class PillPresenter {
 	private static func frame(for hosting: NSView, on screen: NSScreen, metrics: PillMetrics) -> NSRect {
 		let inset = PillView.shadowInset
 		let width = hosting.fittingSize.width
-		let height = metrics.height + inset * 2
+		let height = metrics.totalHeight + inset * 2
 		let bodyTop: CGFloat
 		if metrics.hugsTopEdge {
-			bodyTop = notchBottom(on: screen)
+			// Start at the very top: the strip either side of the notch is what makes the body read as
+			// the notch itself having grown rather than a slab hanging beneath it.
+			bodyTop = screen.frame.maxY
 		} else {
 			// The menubar/notch band: safe area on a notched display, otherwise the menubar or status bar height.
 			let topInset = max(
@@ -133,7 +136,7 @@ final class PillPresenter {
 		}
 		return NSRect(
 			x: (screen.frame.midX - width / 2).rounded(),
-			y: (bodyTop - metrics.height - inset).rounded(),
+			y: (bodyTop - metrics.totalHeight - inset).rounded(),
 			width: width,
 			height: height)
 	}
@@ -146,19 +149,18 @@ final class PillPresenter {
 		}
 		let inset = PillView.shadowInset
 		let width = notchWidth(on: screen) + inset * 2
-		// A sliver the width of the notch, so the body looks like it unrolls from underneath it.
-		let bodyHeight: CGFloat = 6
+		// Exactly the notch's own footprint, so the reveal grows out of it rather than appearing beside it.
+		let bodyHeight = max(screen.safeAreaInsets.top, 6)
 		return NSRect(
 			x: (screen.frame.midX - width / 2).rounded(),
-			y: (notchBottom(on: screen) - bodyHeight - inset).rounded(),
+			y: (screen.frame.maxY - bodyHeight - inset).rounded(),
 			width: width,
 			height: bodyHeight + inset * 2)
 	}
 
-	/// The y the notch style hangs from. The notch is a physical cutout with no pixels behind it, so the
-	/// body starts at its lower edge; a display without one has no inset and the body sits at the very top.
-	private static func notchBottom(on screen: NSScreen) -> CGFloat {
-		screen.frame.maxY - screen.safeAreaInsets.top
+	/// Geometry for `style`, measured against this screen's notch when the style needs it.
+	private static func metrics(for style: PillStyle, on screen: NSScreen) -> PillMetrics {
+		PillMetrics(style: style, notchWidth: notchWidth(on: screen), notchHeight: screen.safeAreaInsets.top)
 	}
 
 	/// Width of the display's physical notch, or a stub of the same order on a display without one.

@@ -28,13 +28,17 @@ Four choices for how the pill is drawn:
 |---|---|
 | Small | The default capsule at 0.85× — text, icon, padding and width all scale together |
 
-The battery glyph is rendered at 11 × 22 pt, so that is the largest it is ever drawn: Small shrinks it, and Large grows the text and the box but leaves the glyph at native size rather than upscaling a bitmap.
+Title and detail are centred, with the icon and text set in from the body's edges. The battery glyph is rendered at 11 × 22 pt, so that is the largest it is ever drawn: Small shrinks it, and Large grows the text and the box but leaves the glyph at native size rather than upscaling a bitmap.
 
 | Default | The standard floating capsule |
 | Large | The same capsule at 1.2× |
-| Notch | Hangs from the bottom edge of the display's notch, opaque black, square top corners and rounded bottom ones, so it reads as a body grown out of the notch |
+| Notch | Starts at the screen's top edge and extends below the notch, opaque black with rounded bottom corners, so the black either side of the cutout makes the notch itself appear to have grown |
 
-Notch is drawn on every display, not just notched ones. The notch is a physical cutout with no pixels behind it, so the body hangs from its lower edge rather than the screen's top edge; on a display without one there is no inset and the body sits at the very top. On the built-in screen the reveal starts at the notch's true width (read from the screen's auxiliary top areas); on an external display it starts from a 180 pt stub and reads as a floating black island. Instead of sliding down, it reveals outward and downward over 0.28 s and collapses back in 0.22 s.
+Notch is drawn on every display, not just notched ones.
+
+The body starts at the very top of the screen. The notch itself is a physical cutout with no pixels behind it, so the text and icon sit in the band *below* it, while the black drawn either side of the cutout is what makes the two read as one shape. Its width is the notch's own width plus 40 pt, growing to another 140 pt before the text truncates — wide enough to read, narrow enough to still look like the notch.
+
+On the built-in screen the notch's true width and height come from the screen's auxiliary top areas and safe-area inset, and the reveal grows out of exactly that footprint. A display without a notch has a zero inset, so nothing is drawn above the content band and the body simply sits flush at the top, revealing from a 180 pt stub. Instead of sliding down, it reveals outward and downward over 0.28 s and collapses back in 0.22 s.
 
 ### Preview
 

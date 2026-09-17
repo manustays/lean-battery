@@ -27,7 +27,7 @@ struct PillView: View {
 			Image(nsImage: icon)
 				.resizable()
 				.frame(width: metrics.iconWidth, height: metrics.iconHeight)
-			VStack(alignment: .leading, spacing: 1) {
+			VStack(alignment: .center, spacing: 1) {
 				Text(content.title)
 					.font(.system(size: metrics.titleFontSize, weight: .semibold))
 					.foregroundStyle(.white)
@@ -36,13 +36,16 @@ struct PillView: View {
 					.foregroundStyle(.white.opacity(0.65))
 			}
 			.lineLimit(1)
-			Spacer(minLength: 0)
+			.multilineTextAlignment(.center)
 		}
 		.padding(.horizontal, metrics.horizontalPadding)
 		// The clamp is the layout: short text grows to the minimum, long text stops at the maximum and truncates.
 		.frame(
 			minWidth: metrics.minimumWidth, maxWidth: metrics.maximumWidth,
 			minHeight: metrics.height, maxHeight: metrics.height)
+		// The notch style draws further up, filling the strip either side of the physical cutout; the
+		// content stays in the band below it, which is the only part with pixels behind it.
+		.padding(.top, metrics.topExtension)
 		.background(background, in: shape)
 		.overlay(shape.strokeBorder(borderColor, lineWidth: 1))
 		.shadow(color: .black.opacity(0.35), radius: 24, x: 0, y: 8)

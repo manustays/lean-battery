@@ -61,26 +61,40 @@ public struct PillMetrics: Equatable, Sendable {
 	public var topGap: Double
 	/// True when the body sits flush against the screen's top edge with square top corners (the notch style).
 	public var hugsTopEdge: Bool
+	/// Body drawn *above* the content band, filling the strip beside the physical notch so the two read as
+	/// one shape. Zero for the floating styles.
+	public var topExtension: Double
+
+	/// Full drawn height, content band plus whatever sits alongside the notch.
+	public var totalHeight: Double { height + topExtension }
 
 	/// Width the notch style reveals from on a display whose real notch width is unknown.
 	public static let notchStubWidth: Double = 180
+	/// How much wider than the notch the body settles: enough for the text, little enough to still read
+	/// as the notch itself having grown.
+	public static let notchSideMargin: Double = 40
+	/// Extra width the body may take before its text truncates.
+	public static let notchGrowth: Double = 140
 
-	/// Default geometry, scaled by the style, except for `notch` which has dimensions of its own.
-	public init(style: PillStyle) {
+	/// Default geometry, scaled by the style, except for `notch`, which sizes itself against the display's
+	/// own notch: `notchWidth` and `notchHeight` describe the physical cutout (zero height on a display
+	/// without one, which simply leaves nothing drawn above the content band).
+	public init(style: PillStyle, notchWidth: Double = PillMetrics.notchStubWidth, notchHeight: Double = 0) {
 		if style == .notch {
 			height = 42
-			minimumWidth = 260
-			maximumWidth = 420
+			minimumWidth = notchWidth + Self.notchSideMargin
+			maximumWidth = notchWidth + Self.notchSideMargin + Self.notchGrowth
 			iconWidth = 10
 			iconHeight = 20
 			titleFontSize = 12.5
 			detailFontSize = 11
-			horizontalPadding = 14
-			contentSpacing = 9
+			horizontalPadding = 18
+			contentSpacing = 12
 			// Rounded along the bottom only, so the top reads as a continuation of the screen edge.
 			cornerRadius = 18
 			topGap = 0
 			hugsTopEdge = true
+			topExtension = notchHeight
 			return
 		}
 		let scale = style.scale
@@ -93,10 +107,11 @@ public struct PillMetrics: Equatable, Sendable {
 		iconHeight = iconWidth * 2
 		titleFontSize = 13 * scale
 		detailFontSize = 11.5 * scale
-		horizontalPadding = 16 * scale
-		contentSpacing = 10 * scale
+		horizontalPadding = 22 * scale
+		contentSpacing = 14 * scale
 		cornerRadius = height / 2
 		topGap = 8
 		hugsTopEdge = false
+		topExtension = 0
 	}
 }

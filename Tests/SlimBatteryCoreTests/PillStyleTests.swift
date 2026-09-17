@@ -11,7 +11,9 @@ import Testing
 		#expect(metrics.iconHeight == 22)
 		#expect(metrics.titleFontSize == 13)
 		#expect(metrics.detailFontSize == 11.5)
-		#expect(metrics.horizontalPadding == 16)
+		#expect(metrics.horizontalPadding == 22)
+		#expect(metrics.topExtension == 0)
+		#expect(metrics.totalHeight == metrics.height)
 		#expect(metrics.topGap == 8)
 		#expect(!metrics.hugsTopEdge)
 	}
@@ -61,9 +63,39 @@ import Testing
 		#expect(metrics.cornerRadius < metrics.height / 2)
 	}
 
+	@Test func notchSizesItselfAgainstTheDisplaysOwnNotch() {
+		let metrics = PillMetrics(style: .notch, notchWidth: 200, notchHeight: 32)
+		// Only a little wider than the cutout, so it reads as the notch having grown.
+		#expect(metrics.minimumWidth == 240)
+		#expect(metrics.maximumWidth == 380)
+		// The body is drawn up alongside the notch, and its content band sits below.
+		#expect(metrics.topExtension == 32)
+		#expect(metrics.totalHeight == metrics.height + 32)
+	}
+
+	@Test func aWiderNotchGivesAWiderBody() {
+		let narrow = PillMetrics(style: .notch, notchWidth: 160, notchHeight: 32)
+		let wide = PillMetrics(style: .notch, notchWidth: 220, notchHeight: 32)
+		#expect(wide.minimumWidth - narrow.minimumWidth == 60)
+	}
+
+	@Test func aDisplayWithoutANotchDrawsNothingAboveTheContent() {
+		// No cutout to fill beside, so the body is just the content band, flush to the top edge.
+		let metrics = PillMetrics(style: .notch, notchWidth: PillMetrics.notchStubWidth, notchHeight: 0)
+		#expect(metrics.topExtension == 0)
+		#expect(metrics.totalHeight == metrics.height)
+		#expect(metrics.hugsTopEdge)
+	}
+
+	@Test func onlyTheNotchStyleDrawsAboveItsContent() {
+		for style in [PillStyle.small, .medium, .large] {
+			#expect(PillMetrics(style: style, notchWidth: 200, notchHeight: 32).topExtension == 0)
+		}
+	}
+
 	@Test func everyStyleIsWideEnoughToBeReadable() {
 		for style in PillStyle.allCases {
-			let metrics = PillMetrics(style: style)
+			let metrics = PillMetrics(style: style, notchWidth: 200, notchHeight: 32)
 			#expect(metrics.minimumWidth >= 200)
 			#expect(metrics.maximumWidth > metrics.minimumWidth)
 			#expect(metrics.height > 0)

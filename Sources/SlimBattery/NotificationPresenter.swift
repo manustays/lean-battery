@@ -35,7 +35,7 @@ final class NotificationPresenter {
 		pill.show(
 			content: PillContent(event: event, adapterWatts: SystemPower.adapterWatts()),
 			icon: icon,
-			metrics: PillMetrics(style: settings.pillStyle),
+			style: settings.pillStyle,
 			isAlert: isAlert)
 		if event.showsGlow, let screen = PillPresenter.activeScreen() {
 			glow.show(on: screen)
