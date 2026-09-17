@@ -19,6 +19,11 @@ struct PillView: View {
 	let metrics: PillMetrics
 	/// True for a low-battery rule, which tints the border red.
 	let isAlert: Bool
+	/// The notch style's collapsed footprint — the physical cutout it grows out of and shrinks back into.
+	/// Ignored by the floating styles, which animate at the window level instead.
+	var collapsedSize: CGSize = .zero
+	/// False while the notch style is still collapsed into that footprint. Toggling it runs the reveal.
+	var isRevealed: Bool = true
 	/// Called when the user taps the body.
 	let onDismiss: () -> Void
 
@@ -38,6 +43,8 @@ struct PillView: View {
 			.lineLimit(1)
 			.multilineTextAlignment(.center)
 		}
+		// The text would otherwise be legible at full size inside a mask still the width of the notch.
+		.opacity(metrics.hugsTopEdge && !isRevealed ? 0 : 1)
 		.padding(.horizontal, metrics.horizontalPadding)
 		// The clamp is the layout: short text grows to the minimum, long text stops at the maximum and truncates.
 		.frame(
@@ -53,6 +60,32 @@ struct PillView: View {
 		.contentShape(shape)
 		.onTapGesture(perform: onDismiss)
 		.padding(Self.shadowInset)
+		// The notch style grows and shrinks under a mask rather than by resizing its window: the window
+		// stays put at full size, so SwiftUI never re-lays-out the contents mid-animation.
+		.mask(revealMask)
+		.animation(metrics.hugsTopEdge ? Self.reveal : nil, value: isRevealed)
+	}
+
+	/// Spring used for the notch style's reveal and collapse.
+	private static let reveal = Animation.spring(response: 0.34, dampingFraction: 0.82)
+
+	/// Full-size for the floating styles; for the notch style, a rounded rect that grows from the
+	/// cutout's own footprint to the body's full size, anchored under the top edge.
+	@ViewBuilder private var revealMask: some View {
+		if metrics.hugsTopEdge {
+			GeometryReader { proxy in
+				let inset = Self.shadowInset
+				let bodyWidth = max(proxy.size.width - inset * 2, 0)
+				let bodyHeight = max(proxy.size.height - inset * 2, 0)
+				let width = isRevealed ? bodyWidth : min(collapsedSize.width, bodyWidth)
+				let height = isRevealed ? bodyHeight : min(collapsedSize.height, bodyHeight)
+				PillShape(cornerRadius: metrics.cornerRadius, squareTopCorners: true)
+					.frame(width: width, height: height)
+					.position(x: proxy.size.width / 2, y: inset + height / 2)
+			}
+		} else {
+			Rectangle()
+		}
 	}
 
 	/// A low-battery alert tints the border red — except in the notch style, where a coloured outline

@@ -10,8 +10,6 @@ final class PillPresenter {
 	private static let slide: CGFloat = 14
 	/// Duration of the entrance and exit animation, for the floating styles.
 	private static let animationDuration = 0.25
-	/// Duration of the notch style's reveal.
-	private static let revealDuration = 0.28
 	/// Duration of the notch style's hide, a little quicker than the reveal.
 	private static let concealDuration = 0.22
 
@@ -21,6 +19,8 @@ final class PillPresenter {
 	private var hosting: NSHostingView<PillView>?
 	/// Geometry of the pill currently on screen, so `dismiss` can reverse the matching animation.
 	private var metrics: PillMetrics?
+	/// What the visible pill is showing, so it can be rebuilt with a different reveal state.
+	private var shown: (content: PillContent, icon: NSImage, collapsed: CGSize, isAlert: Bool)?
 	/// Called when the user clicks the pill.
 	private let onDismiss: () -> Void
 
@@ -34,21 +34,26 @@ final class PillPresenter {
 	func show(content: PillContent, icon: NSImage, style: PillStyle, isAlert: Bool) {
 		guard let screen = Self.activeScreen() else { return }
 		let metrics = Self.metrics(for: style, on: screen)
-		let view = PillView(icon: icon, content: content, metrics: metrics, isAlert: isAlert) { [weak self] in
-			self?.onDismiss()
-		}
+		let collapsed = Self.collapsedSize(on: screen, metrics: metrics)
+		self.metrics = metrics
+		shown = (content, icon, collapsed, isAlert)
+		guard let revealed = makeView(isRevealed: true) else { return }
 		if let panel, let hosting {
-			hosting.rootView = view
-			self.metrics = metrics
+			// Already revealed: swap the contents and resize under it, no second entrance.
+			hosting.rootView = revealed
 			panel.setFrame(Self.frame(for: hosting, on: screen, metrics: metrics), display: true)
 			return
 		}
-		let hosting = NSHostingView(rootView: view)
+		// The notch style starts masked down to the cutout and grows once it is on screen; the floating
+		// styles have no mask and animate their window instead.
+		let hosting = NSHostingView(rootView: metrics.hugsTopEdge ? (makeView(isRevealed: false) ?? revealed) : revealed)
 		let frame = Self.frame(for: hosting, on: screen, metrics: metrics)
 		let panel = NSPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
 		panel.isFloatingPanel = true
 		panel.becomesKeyOnlyIfNeeded = true
-		panel.level = .statusBar
+		// Above GlowPresenter's .screenSaver window: the glow's red border drawing across the pill's top
+		// edge would give away that the notch style is a separate window.
+		panel.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
 		panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
 		panel.backgroundColor = .clear
 		panel.isOpaque = false
@@ -63,43 +68,73 @@ final class PillPresenter {
 		// The system's default order-front/close fade would compound with the hand-rolled animations below.
 		panel.animationBehavior = .none
 		panel.contentView = hosting
-		panel.alphaValue = 0
-		panel.setFrame(Self.entranceFrame(for: frame, on: screen, metrics: metrics), display: false)
-		panel.orderFrontRegardless()
 		self.panel = panel
 		self.hosting = hosting
-		self.metrics = metrics
+		guard !metrics.hugsTopEdge else {
+			// Full size and fully opaque from the start: the mask inside does the growing.
+			panel.setFrame(frame, display: false)
+			panel.orderFrontRegardless()
+			// One turn of the run loop so SwiftUI sees the collapsed state before it animates out of it.
+			DispatchQueue.main.async { [weak self] in
+				guard let self, let hosting = self.hosting, let view = self.makeView(isRevealed: true) else { return }
+				hosting.rootView = view
+			}
+			return
+		}
+		panel.alphaValue = 0
+		panel.setFrame(Self.entranceFrame(for: frame), display: false)
+		panel.orderFrontRegardless()
 		NSAnimationContext.runAnimationGroup { context in
-			context.duration = metrics.hugsTopEdge ? Self.revealDuration : Self.animationDuration
+			context.duration = Self.animationDuration
 			context.timingFunction = CAMediaTimingFunction(name: .easeOut)
 			panel.animator().alphaValue = 1
 			panel.animator().setFrame(frame, display: true)
 		}
 	}
 
+	/// Rebuilds the visible pill at the given reveal state, or nil once nothing is showing.
+	private func makeView(isRevealed: Bool) -> PillView? {
+		guard let shown, let metrics else { return nil }
+		return PillView(
+			icon: shown.icon,
+			content: shown.content,
+			metrics: metrics,
+			isAlert: shown.isAlert,
+			collapsedSize: shown.collapsed,
+			isRevealed: isRevealed) { [weak self] in
+				self?.onDismiss()
+			}
+	}
+
 	/// Reverses the entrance — a slide back up, or a collapse into the notch — then closes and releases the panel.
 	func dismiss(animated: Bool = true) {
 		guard let panel else { return }
-		let metrics = self.metrics
+		let hosting = self.hosting
 		self.panel = nil
-		hosting = nil
-		self.metrics = nil
 		guard animated else {
+			self.hosting = nil
+			shown = nil
+			metrics = nil
 			panel.close()
 			return
 		}
-		let hugsTopEdge = metrics?.hugsTopEdge ?? false
-		let screen = Self.activeScreen()
-		let exitFrame: NSRect
-		if hugsTopEdge, let metrics, let screen {
-			exitFrame = Self.entranceFrame(for: panel.frame, on: screen, metrics: metrics)
-		} else {
-			var frame = panel.frame
-			frame.origin.y += Self.slide
-			exitFrame = frame
+		self.hosting = nil
+		if metrics?.hugsTopEdge == true, let hosting, let collapsed = makeView(isRevealed: false) {
+			// Shrink back into the cutout under the same spring, then close once it has played out.
+			hosting.rootView = collapsed
+			self.shown = nil
+			self.metrics = nil
+			DispatchQueue.main.asyncAfter(deadline: .now() + Self.concealDuration) {
+				panel.close()
+			}
+			return
 		}
+		self.shown = nil
+		self.metrics = nil
+		var exitFrame = panel.frame
+		exitFrame.origin.y += Self.slide
 		NSAnimationContext.runAnimationGroup { context in
-			context.duration = hugsTopEdge ? Self.concealDuration : Self.animationDuration
+			context.duration = Self.animationDuration
 			context.timingFunction = CAMediaTimingFunction(name: .easeIn)
 			panel.animator().alphaValue = 0
 			panel.animator().setFrame(exitFrame, display: true)
@@ -107,6 +142,12 @@ final class PillPresenter {
 			// The completion handler is not statically MainActor-isolated; this class only ever runs on the main actor.
 			MainActor.assumeIsolated { panel.close() }
 		}
+	}
+
+	/// The notch's own footprint on this screen — what the notch style grows out of and shrinks back into.
+	private static func collapsedSize(on screen: NSScreen, metrics: PillMetrics) -> CGSize {
+		guard metrics.hugsTopEdge else { return .zero }
+		return CGSize(width: notchWidth(on: screen), height: max(screen.safeAreaInsets.top, 6))
 	}
 
 	/// The screen under the mouse pointer — the spec's stand-in for "the active screen" (§6.3).
@@ -141,21 +182,10 @@ final class PillPresenter {
 			height: height)
 	}
 
-	/// Where the entrance animation starts and the exit animation ends: 14 pt higher for the floating
-	/// styles, or collapsed to the notch's own footprint for the notch style.
-	private static func entranceFrame(for frame: NSRect, on screen: NSScreen, metrics: PillMetrics) -> NSRect {
-		guard metrics.hugsTopEdge else {
-			return frame.offsetBy(dx: 0, dy: Self.slide)
-		}
-		let inset = PillView.shadowInset
-		let width = notchWidth(on: screen) + inset * 2
-		// Exactly the notch's own footprint, so the reveal grows out of it rather than appearing beside it.
-		let bodyHeight = max(screen.safeAreaInsets.top, 6)
-		return NSRect(
-			x: (screen.frame.midX - width / 2).rounded(),
-			y: (screen.frame.maxY - bodyHeight - inset).rounded(),
-			width: width,
-			height: bodyHeight + inset * 2)
+	/// Where the floating styles' entrance starts and their exit ends: 14 pt higher than they settle.
+	/// The notch style never moves its window — it grows under a mask instead.
+	private static func entranceFrame(for frame: NSRect) -> NSRect {
+		frame.offsetBy(dx: 0, dy: Self.slide)
 	}
 
 	/// Geometry for `style`, measured against this screen's notch when the style needs it.

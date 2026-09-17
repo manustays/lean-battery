@@ -38,7 +38,7 @@ Notch is drawn on every display, not just notched ones.
 
 The body starts at the very top of the screen. The notch itself is a physical cutout with no pixels behind it, so the text and icon sit in the band *below* it, while the black drawn either side of the cutout is what makes the two read as one shape. Its width is the notch's own width plus 40 pt, growing to another 140 pt before the text truncates — wide enough to read, narrow enough to still look like the notch.
 
-On the built-in screen the notch's true width and height come from the screen's auxiliary top areas and safe-area inset, and the reveal grows out of exactly that footprint. A display without a notch has a zero inset, so nothing is drawn above the content band and the body simply sits flush at the top, revealing from a 180 pt stub. Instead of sliding down, it reveals outward and downward over 0.28 s and collapses back in 0.22 s.
+On the built-in screen the notch's true width and height come from the screen's auxiliary top areas and safe-area inset, and the reveal grows out of exactly that footprint. A display without a notch has a zero inset, so nothing is drawn above the content band and the body simply sits flush at the top, revealing from a 180 pt stub. Instead of sliding down, it grows out of the cutout in both directions at once and shrinks back into it. The window is placed at full size and never moves; a mask the shape of the body expands from the notch's own footprint under a spring, so the contents never re-lay-out mid-animation and the growth reads as the notch itself stretching.
 
 ### Preview
 
@@ -84,6 +84,8 @@ The pill's size and placement follow the **Style** setting above. In the three f
 ## The glow
 
 A screen-edge glow accompanies the pill only for below rules with their **Glow** chip on, plus the Preview button. Above rules and power-change alerts never show it. It fills the same screen as the pill: a thin alert-red border with an inward bloom, pulsing between about 45% and full opacity, each half-cycle taking 0.8 s, reversing continuously while it's up. The window is click-through — clicks pass straight to whatever is underneath — and the pulse is a Core Animation layer running on the window server, so it costs no per-frame work in the app itself once the window is up. It fades out over 0.4 s when the pill is dismissed by click or by timing out; a display-configuration change closes it immediately, without the fade.
+
+The pill is always drawn above the glow. The glow's border would otherwise cross the pill's top edge, which in the Notch style gives away that the two are separate windows.
 
 ## The sound
 
