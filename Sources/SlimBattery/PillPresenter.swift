@@ -7,12 +7,16 @@ import SlimBatteryCore
 final class PillPresenter {
 	/// Slide distance of the entrance and exit animation.
 	private static let slide: CGFloat = 14
+	/// Duration of the entrance and exit animation.
 	private static let animationDuration = 0.25
 	/// Gap between the menubar and the top of the capsule.
 	private static let topGap: CGFloat = 8
 
+	/// The currently shown panel, or nil when no pill is on screen.
 	private var panel: NSPanel?
+	/// The panel's SwiftUI content view, kept so `show` can swap its `rootView` in place.
 	private var hosting: NSHostingView<PillView>?
+	/// Called when the user clicks the pill.
 	private let onDismiss: () -> Void
 
 	/// `onDismiss` runs when the user clicks the pill.

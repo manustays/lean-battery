@@ -5,7 +5,9 @@ import SlimBatteryCore
 struct PillView: View {
 	/// Capsule height; the panel is this plus two shadow insets.
 	static let height: CGFloat = 46
+	/// Narrowest the capsule is allowed to shrink to.
 	static let minimumWidth: CGFloat = 240
+	/// Widest the capsule is allowed to grow to before text truncates.
 	static let maximumWidth: CGFloat = 400
 	/// Transparent margin around the capsule so the drop shadow is not clipped by the window.
 	static let shadowInset: CGFloat = 20
