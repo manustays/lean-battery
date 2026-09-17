@@ -28,7 +28,7 @@ Two details matter for accuracy:
 - **The window is anchored to the log, not the clock.** Powerlog timestamps do not sit on the wall clock, and the difference is not stable enough to correct for. SlimBattery instead measures back from the newest logged moment, which is correct whatever the log's clock is doing. If the log has not been written for more than 15 minutes, the range reads as empty rather than showing stale numbers.
 - **Long activities are counted proportionally.** The log records intervals averaging about 10 minutes — longer than the `Now` window itself. Only the part of each interval falling inside the window is counted, so `Now` is a true 5-minute measure.
 
-`7d` also reads the daily archives: each is decompressed to a temporary file, queried, and deleted. Archives that fall entirely inside the range have their totals cached while the popover stays open, so they are not read again. The one archive straddling the start of the range is still re-read on each refresh, because how much of it counts depends on exactly where the range begins.
+`7d` also reads the daily archives: each is decompressed to a temporary file, queried, and deleted. Archives that fall entirely inside the range have their totals cached while the popover stays open, so they are not read again. The one archive straddling the start of the range depends on exactly where the range begins, so its contribution is cached against those precise bounds and reused until they move — and they move only when macOS writes to the log, not on every refresh. In practice most refreshes read nothing but the live log.
 
 ### Battery Information
 Collapsed by default; SlimBattery remembers whether you left it open. Values are read only while the popover is open **and** this section is expanded.
@@ -56,8 +56,11 @@ Launch at login registers SlimBattery as a login item only when you change the s
 
 - While the popover is **closed**, nothing here runs.
 - While it is **open**, values refresh every 5 s (1 s tolerance) and immediately on any battery change. The timer stops when the popover closes.
-- Energy is read on a background actor, never on the main thread: one query costs roughly 30–70 ms, and the `7d` path about a second on its first run — after that, roughly one archive decompression (~70 ms) per refresh, plus the live-log query.
+- Energy is read on a background actor, never on the main thread. Each refresh opens the live log **once**: about 12 ms of SQLite work on `Now` and 21 ms on `7d`. The `7d` path costs roughly a second on its first run while it decompresses the archives; afterwards it usually re-reads nothing but the live log.
+- The section is redrawn only when its values actually change, so a refresh that finds the same apps in the same order costs nothing on screen.
 
-Measured with the popover open: _pending — needs a human to hold the popover open while `scripts/cpu-check.sh 120` runs._
+Measured with the popover open on `7d`, the most expensive range: `samples=120 mean_cpu=0.91% idle_wakeups_per_min=1.0 memory=44M` (2026-09-17). On `Now` an earlier build measured `mean_cpu=0.81%`; the optimisations since can only have lowered it, so treat that as an upper bound.
 
-Measured with the popover closed: `samples=60 mean_cpu=0.00% idle_wakeups_per_min=0.0 memory=12M` (2026-09-16).
+Both are inside the 1% budget, but `7d` clears it by only 0.09 points. Anything added to the 5-second refresh path should be re-measured rather than assumed free. Profile before optimising: SQLite is only about 55–60% of the per-tick cost, and the first attempt to speed this up targeted the wrong half.
+
+Measured with the popover closed: `samples=60 mean_cpu=0.00% idle_wakeups_per_min=0.0 memory=14M` (2026-09-17). Working memory rises while the popover is open — around 44M on `7d` — and is released again a couple of minutes after it closes.
