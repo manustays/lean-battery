@@ -20,6 +20,19 @@ One switch — "Connected / disconnected" — plus a **Sound** chip, disabled wh
 
 A 2–10 s slider (whole seconds) controlling how long every pill (and its glow, if any) stays on screen.
 
+### Style
+
+Four choices for how the pill is drawn:
+
+| Style | What it looks like |
+|---|---|
+| Small | The default capsule at 0.85× — text, icon, padding and width all scale together |
+| Default | The standard floating capsule |
+| Large | The same capsule at 1.2× |
+| Notch | Flush against the screen's top edge, opaque black, square top corners and rounded bottom ones, so on a MacBook it reads as a body grown out of the display's notch |
+
+Notch is drawn on every display, not just notched ones. On the built-in screen it continues the real notch (its reveal starts at the notch's true width, read from the screen's auxiliary top areas); on an external display it starts from a 180 pt stub and reads as a floating black island. Instead of sliding down, it reveals outward and downward over 0.28 s and collapses back in 0.22 s.
+
 ### Preview
 
 **Preview notification** shows the pill and glow for a sample low-battery event (10%, "about 38m left", glow on, sound off), regardless of your actual battery level or rules. Pressing it again while a pill is showing replaces the pill in place rather than stacking a second one.
@@ -57,7 +70,9 @@ One capsule with the current battery icon, a title, and a detail line:
 
 Time is written as `38m` under an hour, otherwise `4h 05m`.
 
-The pill appears centered, 8 pt below the menubar/notch band, on whichever screen the pointer is on (falling back to the main screen). It floats above fullscreen apps and follows you across Spaces. It slides down and fades in over a quarter second, stays for the duration set in the settings page, then slides up and fades out the same way. If a new event fires while a pill is already showing, its content and size update in place — no stacking, and the entrance animation doesn't replay. **Clicking the pill dismisses it and its glow immediately** and cancels the remaining dwell time. Changing display configuration (e.g. unplugging a monitor) also closes both instantly, without the exit animation.
+A below-rule pill — the only event that is genuinely bad news — carries a red border tint (`#FF453A` at 55 %) instead of the usual white 14 %, matching the glow's colour. Every other event keeps the neutral border. Nothing else about the pill changes: same material, same shadow, same text.
+
+The pill's size and placement follow the **Style** setting above. In the three floating styles it appears centered, 8 pt below the menubar/notch band, on whichever screen the pointer is on (falling back to the main screen). It floats above fullscreen apps and follows you across Spaces. It slides down and fades in over a quarter second, stays for the duration set in the settings page, then slides up and fades out the same way. The Notch style instead sits flush to the top edge and reveals out of the notch, as described above. If a new event fires while a pill is already showing, its content and size update in place — no stacking, and the entrance animation doesn't replay. **Clicking the pill dismisses it and its glow immediately** and cancels the remaining dwell time. Changing display configuration (e.g. unplugging a monitor) also closes both instantly, without the exit animation.
 
 ## The glow
 
@@ -77,8 +92,9 @@ Four UserDefaults keys, all under the app's domain:
 | `powerChangeAlerts` | Bool | Off |
 | `powerChangeSound` | Bool | Off |
 | `notificationDuration` | Int, seconds | 4 |
+| `pillStyle` | String: `small`, `medium`, `large` or `notch` | `medium` |
 
-If the stored rules can't be decoded (missing, corrupt, or otherwise unreadable JSON), the list falls back to that same single `Below 20%` default rather than starting empty. An intentionally empty list (every rule deleted) is stored and read back as empty — it's only undecodable data that falls back to the default.
+An unrecognised `pillStyle` (or none at all) reads back as `medium`. If the stored rules can't be decoded (missing, corrupt, or otherwise unreadable JSON), the list falls back to that same single `Below 20%` default rather than starting empty. An intentionally empty list (every rule deleted) is stored and read back as empty — it's only undecodable data that falls back to the default.
 
 ## CPU behavior
 

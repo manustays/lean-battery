@@ -33,6 +33,11 @@ final class NotificationSettings {
 		didSet { UserDefaults.standard.set(duration, forKey: DefaultsKey.notificationDuration) }
 	}
 
+	/// Size and placement of the notification pill.
+	var pillStyle: PillStyle {
+		didSet { UserDefaults.standard.set(pillStyle.rawValue, forKey: DefaultsKey.pillStyle) }
+	}
+
 	/// Called after any rule edit so the engine re-arms from the current level (spec §6.2).
 	@ObservationIgnored var onRulesChange: (([NotificationRule]) -> Void)?
 
@@ -42,6 +47,7 @@ final class NotificationSettings {
 		powerChangeAlerts = UserDefaults.standard.bool(forKey: DefaultsKey.powerChangeAlerts)
 		powerChangeSound = UserDefaults.standard.bool(forKey: DefaultsKey.powerChangeSound)
 		duration = UserDefaults.standard.integer(forKey: DefaultsKey.notificationDuration)
+		pillStyle = PillStyle(stored: UserDefaults.standard.string(forKey: DefaultsKey.pillStyle))
 	}
 
 	/// Whether another rule fits (spec §6.1 caps at 5).

@@ -9,6 +9,7 @@ enum DefaultsKey {
 	static let powerChangeAlerts = "powerChangeAlerts"
 	static let powerChangeSound = "powerChangeSound"
 	static let notificationDuration = "notificationDuration"
+	static let pillStyle = "pillStyle"
 }
 
 /// Wires the battery monitor to the menubar icon, the popover, and the notification engine.
@@ -35,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 			DefaultsKey.hotThresholdCelsius: 40.0,
 			DefaultsKey.batteryInfoExpanded: false,
 			DefaultsKey.notificationDuration: 4,
+			DefaultsKey.pillStyle: PillStyle.default.rawValue,
 		])
 		let statusIcon = StatusIcon { [weak self] button in
 			self?.popoverController?.toggle(relativeTo: button)

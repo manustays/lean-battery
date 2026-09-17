@@ -17,6 +17,7 @@ struct NotificationsView: View {
 			powerChanges
 			Divider()
 			duration
+			style
 			Button("Preview notification") { model.previewNotification() }
 				.frame(maxWidth: .infinity)
 		}
@@ -82,6 +83,23 @@ struct NotificationsView: View {
 				in: Double(NotificationSettings.durationRange.lowerBound)...Double(NotificationSettings.durationRange.upperBound),
 				step: 1)
 			Text("\(settings.duration)s").monospacedDigit().frame(width: 26, alignment: .trailing)
+		}
+	}
+
+	/// Pill size, plus the notch style that hugs the screen's top edge.
+	private var style: some View {
+		HStack {
+			Text("Style")
+			Spacer()
+			Picker("", selection: $settings.pillStyle) {
+				ForEach(PillStyle.allCases, id: \.self) { style in
+					Text(style.title).tag(style)
+				}
+			}
+			.labelsHidden()
+			.pickerStyle(.segmented)
+			.controlSize(.small)
+			.frame(width: 232)
 		}
 	}
 }

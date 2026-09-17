@@ -29,7 +29,14 @@ final class NotificationPresenter {
 	/// Shows `event`: the pill always, the glow when the rule asks for it, the sound once.
 	func show(_ event: NotificationEvent) {
 		let icon = BatteryIconImage.make(for: IconSpec(state: event.state), isDark: true)
-		pill.show(content: PillContent(event: event, adapterWatts: SystemPower.adapterWatts()), icon: icon)
+		// Only a below-rule is bad news, so only it tints the pill's border red — the same rule the glow follows.
+		let isAlert: Bool
+		if case .below = event.kind { isAlert = true } else { isAlert = false }
+		pill.show(
+			content: PillContent(event: event, adapterWatts: SystemPower.adapterWatts()),
+			icon: icon,
+			metrics: PillMetrics(style: settings.pillStyle),
+			isAlert: isAlert)
 		if event.showsGlow, let screen = PillPresenter.activeScreen() {
 			glow.show(on: screen)
 		} else {
