@@ -49,6 +49,7 @@ Opened from the footer; replaces the popover content until you press **‹ Back*
 |---|---|---|
 | High temp alert at (30–60 °C) | 40 °C | `tempThresholdC` (UserDefaults) |
 | Launch at login | Off | macOS Login Items (`SMAppService`) |
+| Notifications › | — | See [Notifications](notifications.md) |
 
 Launch at login registers SlimBattery as a login item only when you change the switch. If macOS needs approval, the row says so (System Settings → General → Login Items). If registration is rejected (for example for an unsigned build), SlimBattery writes a LaunchAgent at `~/Library/LaunchAgents/<bundle id>.plist` instead and removes it when you turn the switch off.
 

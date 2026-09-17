@@ -40,10 +40,14 @@ The macOS battery icon with a percentage is wide, and on a notched MacBook menub
 - Collapsible **battery information**: health, condition, cycle count, capacity, voltage, adapter.
 - Settings: high-temperature threshold and launch at login.
 
+**Notifications (available now)**
+
+- Optional, off by default: up to 5 battery threshold alerts and a power connected/disconnected alert.
+- A floating pill below the notch, and a screen-edge glow for low battery.
+
 **Coming next**
 
 - **Bluetooth device batteries** (headphones, mice, keyboards, controllers).
-- Optional **notifications**: up to 5 battery threshold alerts, power connected/disconnected, a floating pill below the notch, and a screen-edge glow for low battery.
 
 ## Requirements
 
