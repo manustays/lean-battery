@@ -94,11 +94,12 @@ private struct RuleRow: View {
 	let onDelete: () -> Void
 
 	var body: some View {
-		// spacing 4 (was 6) and a sized-to-fit Picker (was a fixed 130 pt, wide enough for either
-		// label at all times) keep a below-direction row — the widest, since it adds the Glow chip —
-		// inside the popover's 292 pt content width. See NotificationsView.swift width arithmetic in
-		// the fix report for the full budget.
-		HStack(spacing: 4) {
+		// The row has 292 pt to spend (320 pt popover less 14 pt padding a side) and a below-direction
+		// row is the widest, since it alone adds the Glow chip. `.fixedSize()` is no help on the
+		// Picker: an NSPopUpButton's intrinsic width fits its *longest* menu item, so it claimed
+		// ~133 pt whichever direction was selected and squeezed the chips until their labels wrapped
+		// one letter per line. The Picker now takes a fixed share and everything else is incompressible.
+		HStack(spacing: 3) {
 			Toggle("", isOn: $rule.isEnabled)
 				.toggleStyle(.switch)
 				.controlSize(.mini)
@@ -110,8 +111,8 @@ private struct RuleRow: View {
 			.labelsHidden()
 			.pickerStyle(.menu)
 			.controlSize(.small)
-			.fixedSize()
-			Text("\(rule.threshold)%").monospacedDigit().frame(width: 30, alignment: .trailing)
+			.frame(width: 108)
+			Text("\(rule.threshold)%").monospacedDigit().frame(width: 28, alignment: .trailing)
 			Stepper("", value: $rule.threshold, in: NotificationRule.thresholdRange)
 				.labelsHidden()
 				.controlSize(.small)
@@ -143,6 +144,10 @@ private struct ChipToggle: View {
 		} label: {
 			Text(title)
 				.font(.system(size: 10, weight: .medium))
+				// Without this the chip is the row's only compressible view, so any overflow
+				// elsewhere wraps the label to one letter per line instead of showing up as a clip.
+				.lineLimit(1)
+				.fixedSize()
 				.padding(.horizontal, 6)
 				.padding(.vertical, 2)
 				.background(isOn ? Color.accentColor.opacity(0.25) : Color.secondary.opacity(0.12), in: Capsule())
