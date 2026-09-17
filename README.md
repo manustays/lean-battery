@@ -4,6 +4,8 @@
 > **A battery indicator that doesn't hog your menubar.**
 >
 > A native macOS menubar app that shows battery level and charging state in an 11-point-wide upright battery — with a popover for per-app energy use, Bluetooth device batteries, and battery health.
+>
+> **0.00% CPU and 0 idle wakeups** while it sits in your menubar. Measured, not claimed — [see the numbers](#efficiency-measured).
 
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
 <a href="#requirements"><img src="https://img.shields.io/badge/macOS-26+-black.svg" alt="Platform: macOS 26+" /></a>
@@ -22,6 +24,38 @@
 The macOS battery icon with a percentage is wide, and on a notched MacBook menubar space is scarce. Many third-party battery apps are wider still, and many poll the system constantly.
 
 **SlimBattery** turns the battery upright: the charge level, charging plug, Low Power Mode and a high-temperature warning all fit in an 11-point-wide icon. It does no polling for battery state — it redraws only when macOS reports a change.
+
+## Efficiency, measured
+
+A battery app that costs you battery is a bad joke. SlimBattery is built to do **nothing at all** until macOS tells it something changed, and the numbers below are from the real app on a real Mac, not estimates.
+
+| What you're doing | CPU | Idle wakeups | Memory |
+|---|---|---|---|
+| **Menubar only** — the 99% case | **0.00%** | **0 / min** | **14 MB** |
+| Notification on screen (pill + glow) | 0.01% | 0 / min | — ¹ |
+| Popover open, `Now` range | 0.81% | — | ~38 MB |
+| Popover open, `7d` range — the heaviest thing it does | 0.91% | 1.0 / min | 44 MB |
+
+¹ Memory during a notification reads ~44 MB, but that is the popover's working set — you have to open the popover to reach the preview button. It is released a couple of minutes after the popover closes.
+
+**Why it's idle:**
+
+- **No polling for battery state.** The icon redraws when macOS posts a power-source, Low Power Mode or wake notification, and not otherwise. A state that looks identical to the one on screen redraws nothing.
+- **One lax timer, for temperature only** — 60 s with 30 s tolerance, because battery temperature is the one value macOS has no notification for. The tolerance lets macOS coalesce it with other wakeups instead of waking the CPU on its own.
+- **The popover's timers exist only while it is open.** Close it and they are invalidated. Energy history is read on a background actor, never on the main thread, and each section redraws only when its values actually change.
+- **Notifications cost nothing between events.** No timer, no window, no polling. The pill and glow are created when something fires and destroyed on dismissal, and the glow's pulse is a Core Animation the window server renders — the app does no per-frame work for it.
+- **Energy data is read, not collected.** SlimBattery opens macOS's own power log read-only, only while the popover is open. It stores no history of its own.
+
+**Measured with** [`scripts/cpu-check.sh`](scripts/cpu-check.sh), which samples once a second via `top` and reports the mean, on an M3 Pro MacBook Pro running macOS 27. Reproduce it yourself:
+
+```bash
+scripts/cpu-check.sh 60                      # 60 one-second samples
+(sleep 25; caffeinate -di scripts/cpu-check.sh 120)   # for runs you must not touch
+```
+
+Wrap any long run in `caffeinate -di` — a sample that needs two untouched minutes is exactly long enough for the display to sleep, and waking it lands real work inside your measurement.
+
+Numbers are one machine and one configuration; yours will differ. The full method and the per-feature breakdowns are in [docs/popover.md](docs/popover.md) and [docs/notifications.md](docs/notifications.md).
 
 ## Features
 
@@ -89,6 +123,7 @@ swift test --filter IconRendererTests
 |-----|--------------|
 | [Menubar icon](docs/menubar-icon.md) | Icon states, how updates are triggered, data sources, settings keys, CPU footprint check |
 | [Popover](docs/popover.md) | Header values and sources, Battery Information, settings, Low Power Mode prompt, CPU behavior |
+| [Notifications](docs/notifications.md) | Rules and firing semantics, the pill and its four styles, the screen-edge glow, storage, CPU behavior |
 
 ## How does it work
 
@@ -97,7 +132,7 @@ SlimBattery is a Swift package with two targets:
 - **`SlimBatteryCore`** — pure logic with unit tests: turning macOS power-source data into a `BatteryState`, deciding what the icon shows, and drawing it with Core Graphics.
 - **`SlimBattery`** — a small AppKit agent app (no Dock icon) that listens for power-source, Low Power Mode and wake notifications and redraws the status item only when what you see would change.
 
-A 60-second timer with generous tolerance re-reads battery temperature, which has no change notification. Measured idle cost on a MacBook Pro: **0.00% CPU, 0 idle wakeups per minute, ~11 MB memory** (`scripts/cpu-check.sh`).
+A 60-second timer with generous tolerance re-reads battery temperature, which has no change notification. Measured idle cost: **0.00% CPU, 0 idle wakeups per minute, 14 MB memory** — see [Efficiency, measured](#efficiency-measured).
 
 ## Known limitations
 
