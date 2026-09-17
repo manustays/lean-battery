@@ -7,7 +7,9 @@ struct PopoverView: View {
 
 	var body: some View {
 		VStack(spacing: 0) {
-			if model.isShowingSettings {
+			if model.isShowingNotifications {
+				NotificationsView(model: model, settings: model.notificationSettings)
+			} else if model.isShowingSettings {
 				SettingsView(model: model)
 			} else {
 				if let header = model.header {

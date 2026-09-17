@@ -38,6 +38,18 @@ struct SettingsView: View {
 						.foregroundStyle(.secondary)
 				}
 			}
+			Divider()
+			Button {
+				model.isShowingNotifications = true
+			} label: {
+				HStack {
+					Text("Notifications")
+					Spacer()
+					Text("›").foregroundStyle(.secondary)
+				}
+				.contentShape(.rect)
+			}
+			.buttonStyle(.plain)
 		}
 		.padding(14)
 	}

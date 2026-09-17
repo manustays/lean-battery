@@ -29,6 +29,10 @@ final class PopoverModel {
 	}
 
 	var isShowingSettings = false
+	/// Whether the notifications subpage is showing on top of settings (spec §6.1).
+	var isShowingNotifications = false
+	/// Notification preferences, shared with the presenter that shows the pill.
+	@ObservationIgnored let notificationSettings: NotificationSettings
 	private(set) var isChangingLowPowerMode = false
 	private(set) var lowPowerModeMessage: String?
 	private(set) var launchAtLogin: Bool
@@ -52,6 +56,7 @@ final class PopoverModel {
 	}
 
 	@ObservationIgnored private let monitor: BatteryMonitor
+	@ObservationIgnored private let onPreviewNotification: () -> Void
 	@ObservationIgnored private var timer: Timer?
 	/// Reads energy sums from the powerlog; an actor because its work is blocking file/SQLite I/O.
 	@ObservationIgnored private let energyStore = EnergyStore()
@@ -61,12 +66,19 @@ final class PopoverModel {
 	@ObservationIgnored private var energyGeneration = 0
 
 	/// Creates the model from persisted settings.
-	init(monitor: BatteryMonitor) {
+	init(monitor: BatteryMonitor, notificationSettings: NotificationSettings, onPreviewNotification: @escaping () -> Void) {
 		self.monitor = monitor
+		self.notificationSettings = notificationSettings
+		self.onPreviewNotification = onPreviewNotification
 		isInfoExpanded = UserDefaults.standard.bool(forKey: DefaultsKey.batteryInfoExpanded)
 		hotThresholdCelsius = UserDefaults.standard.double(forKey: DefaultsKey.hotThresholdCelsius)
 		launchAtLogin = LoginItem.isEnabled
 		launchAtLoginMessage = LoginItem.statusText
+	}
+
+	/// Shows the sample notification behind the `Preview notification` button (spec §6.1).
+	func previewNotification() {
+		onPreviewNotification()
 	}
 
 	/// Refreshes now and every 5 s until `stop()`.
@@ -89,6 +101,7 @@ final class PopoverModel {
 		timer?.invalidate()
 		timer = nil
 		isShowingSettings = false
+		isShowingNotifications = false
 		energyRange = .now
 		energyState = .loading
 		energyCoverage = [:]
