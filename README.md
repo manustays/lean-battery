@@ -42,7 +42,7 @@ The macOS battery icon with a percentage is wide, and on a notched MacBook menub
 
 **Notifications (available now)**
 
-- Optional, off by default: up to 5 battery threshold alerts and a power connected/disconnected alert.
+- One low-battery rule on by default; up to 5 battery threshold rules in total. Power connected/disconnected alerts are off by default.
 - A floating pill below the notch, and a screen-edge glow for low battery.
 
 **Coming next**
@@ -110,7 +110,6 @@ A 60-second timer with generous tolerance re-reads battery temperature, which ha
 ## Roadmap
 
 - Popover: battery header, energy by app, Bluetooth batteries, battery information, settings.
-- Notifications: threshold alerts, power-change pill, low-battery edge glow.
 - Releases: Homebrew cask (`brew install --cask manustays/tools/slimbattery`), GitHub Releases, optional notify-only update check.
 
 ## Support
