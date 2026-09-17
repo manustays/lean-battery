@@ -33,6 +33,16 @@ enum SystemPower {
 		} ?? [:]
 	}
 
+	/// Adapter wattage from `AdapterDetails.Watts`, or nil when unknown or on battery.
+	static func adapterWatts() -> Int? {
+		guard
+			let details = smartBatteryProperty("AdapterDetails") as? [String: Any],
+			let watts = details["Watts"] as? Int,
+			watts > 0
+		else { return nil }
+		return watts
+	}
+
 	/// Looks up the AppleSmartBattery service, runs `body`, and releases the service.
 	private static func withSmartBattery<Result>(_ body: (io_service_t) -> Result?) -> Result? {
 		let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))

@@ -45,20 +45,8 @@ final class StatusIcon: NSObject {
 		guard spec != drawnSpec || isDark != drawnDark else { return }
 		drawnSpec = spec
 		drawnDark = isDark
-		button.image = Self.image(for: spec, isDark: isDark)
+		button.image = BatteryIconImage.make(for: spec, isDark: isDark)
 		button.title = ""
 		button.imagePosition = .imageOnly
-	}
-
-	/// Builds an NSImage with 1× and 2× bitmap representations.
-	private static func image(for spec: IconSpec, isDark: Bool) -> NSImage {
-		let image = NSImage(size: IconRenderer.size)
-		for scale in [1.0, 2.0] {
-			guard let cgImage = IconRenderer.render(spec, foregroundIsWhite: isDark, scale: scale) else { continue }
-			let representation = NSBitmapImageRep(cgImage: cgImage)
-			representation.size = IconRenderer.size
-			image.addRepresentation(representation)
-		}
-		return image
 	}
 }
