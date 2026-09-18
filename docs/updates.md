@@ -115,7 +115,10 @@ wake itself up, or your Mac, just to ask GitHub a question you haven't asked it 
 
 ## Idle cost
 
-Not yet measured — this section is pending Task 8's CPU/wakeup pass. `docs/popover.md` and
-`docs/notifications.md` already show that a `check()` call that the policy decides not to run (the
-common case: cooldown not elapsed) does no network work at all, but the actual cost of the request
-itself, and of the popover's other work happening at the same moment, has not been profiled yet.
+Measured 2026-09-18 with the popover closed and the update-check switch **on**:
+`samples=120 mean_cpu=0.04% idle_wakeups_per_min=0.0 memory=14M`
+(`caffeinate -di scripts/cpu-check.sh 120`; see `docs/popover.md`'s CPU behavior section for the
+full note). Update checking itself adds no idle cost — `check()` only ever runs from a popover open
+or "Check now", and neither fired during this measurement. The 0.04% (idle wakeups and memory are
+still exactly at the bar) traces to `BatteryMonitor`'s unrelated 60 s temperature-poll timer, which
+predates this feature and runs regardless of the update switch.
