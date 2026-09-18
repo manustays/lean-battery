@@ -2,3 +2,7 @@
 .build/
 *.app
 .DS_Store
+dist/*
+!dist/homebrew/
+Resources/AppIcon.icns
+node_modules/
