@@ -101,7 +101,7 @@ Numbers are one machine and one configuration; yours will differ. The full metho
 
 ```bash
 git clone https://github.com/manustays/lean-battery.git
-cd leanbattery
+cd lean-battery
 make app                 # release build → LeanBattery.app (ad-hoc signed)
 open LeanBattery.app     # run it
 make install             # copy to /Applications
