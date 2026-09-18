@@ -15,6 +15,19 @@ LeanBattery's menubar item is an upright battery, 11 × 22 pt, drawn in code (no
 
 The fill is translucent and the % or plug is always drawn in one solid color (white on a dark menubar, black on a light one) on top of it, so digits stay whole and readable at any charge level. Digits use SF compressed so two digits fit the 8.3pt interior without touching the frame.
 
+## Sample images
+
+`docs/assets/menubar-*.png` are transparent 88 × 176 px renders (8× the 11 × 22 pt icon) for use in the README or on the web. Each stage has a dark-menubar version (white outline) and a `-light` version (black outline) for light backgrounds.
+
+| Stage | Dark background | Light background |
+|---|---|---|
+| Discharging | `menubar-discharging.png` | `menubar-discharging-light.png` |
+| Charging | `menubar-charging.png` | `menubar-charging-light.png` |
+| Low battery | `menubar-low-battery.png` | `menubar-low-battery-light.png` |
+| High temperature | `menubar-high-temperature.png` | `menubar-high-temperature-light.png` |
+
+Regenerate after any drawing change: `./scripts/sample-icons.sh` (renders through the same `IconRenderer` the app uses).
+
 ## How it updates
 
 `BatteryMonitor` does no polling for charge state. It rebuilds `BatteryState` only when:
