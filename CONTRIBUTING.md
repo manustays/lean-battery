@@ -41,8 +41,8 @@ swift test
 ```
 
 If your change touches any UI that's on screen while idle, or that runs on a timer — the menubar
-icon, the popover, or a notification — measure it against the CPU bar in [spec §10](README.md#efficiency-measured)
-before you open the PR, not after review flags it:
+icon, the popover, or a notification — measure it against the CPU bar documented in
+[Efficiency, measured](README.md#efficiency-measured) before you open the PR, not after review flags it:
 
 ```bash
 scripts/cpu-check.sh 60

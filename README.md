@@ -3,7 +3,7 @@
 
 > **A battery indicator that doesn't hog your menubar.**
 >
-> A native macOS menubar app that shows battery level and charging state in an 11-point-wide upright battery — with a popover for per-app energy use, Bluetooth device batteries, and battery health.
+> A native macOS menubar app that shows battery level and charging state in an 11-point-wide upright battery — with a popover for per-app energy use and battery health.
 >
 > **0.00% CPU and 0 idle wakeups** while it sits in your menubar. Measured, not claimed — [see the numbers](#efficiency-measured).
 
@@ -82,7 +82,7 @@ Numbers are one machine and one configuration; yours will differ. The full metho
 - **Apps using significant energy** with a `Now / 8h / 24h / 7d` range switch.
 - Battery header: %, time left, power source and adapter wattage, live system power draw, temperature, and a Low Power Mode switch.
 - Collapsible **battery information**: health, condition, cycle count, capacity, voltage, adapter.
-- Settings: high-temperature threshold and launch at login.
+- Settings: high-temperature threshold, launch at login, and update-check controls (toggle, "Check now", status line).
 
 **Notifications (available now)**
 

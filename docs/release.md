@@ -5,6 +5,33 @@ hands the whole decision — whether to release, what version, what changelog �
 [`semantic-release`](https://semantic-release.gitbook.io/), configured in
 [`.releaserc.json`](../.releaserc.json). Nothing about a release is typed in by hand.
 
+## The first release
+
+`@semantic-release/commit-analyzer` picks the highest bump since the **last tag** — with no prior
+tag, semantic-release always starts a first release at the hardcoded constant `1.0.0`, regardless of
+what any commit's type calls for. This repository's actual first commits are all `feat:`/`fix:`
+work that should publish `0.1.0`, matching the version already stamped in `Resources/Info.plist`, the
+cask, and every doc — not `1.0.0`.
+
+The fix is a local annotated tag, `v0.0.0`, created on the last commit before this release's work
+(`git tag -a v0.0.0 <commit> -m "..."`) and **not yet pushed**. With that tag in place,
+`@semantic-release/commit-analyzer` sees every commit since `v0.0.0` as the "commits since last
+release" set, computes the highest bump among them (this range contains `feat:` commits, so a
+**minor** bump: `0.0.0` → **`0.1.0`**), and semantic-release proceeds normally from there.
+
+**This tag must be pushed together with the first push to `main`, in the same operation, before the
+release workflow's push trigger fires:**
+
+```bash
+git push origin v0.0.0 && git push -u origin main
+```
+
+If `main` is pushed first (or alone) and the release workflow runs before `v0.0.0` reaches the
+remote, semantic-release finds no tags on the remote, treats the push as the first release, and
+publishes `1.0.0` — permanently, since ["a broken release is never replaced"](#a-broken-release-is-never-replaced)
+applies to a wrong version number too. There is no later chance to correct it once that first
+`v1.0.0` is public.
+
 ## What decides the version
 
 `@semantic-release/commit-analyzer` reads every commit since the last release and picks the highest
@@ -71,30 +98,55 @@ patch release is what actually reaches users, not a rewritten old one.
 ## Publishing the cask to the tap
 
 This repository never pushes to the tap — that's always a manual, separate step, and it can only
-happen after a real release exists (so there's a real sha256 to give the cask). `dist/homebrew/`
-holds the two files the tap needs; copy and push them from a clone of `manustays/homebrew-tools`:
+happen after a real release exists (so there's a real sha256, and a real version, to give the cask).
+`dist/homebrew/` holds the two files the tap needs; copy them from a clone of
+`manustays/homebrew-tools`:
 
 ```bash
 # in your clone of manustays/homebrew-tools
 cp ~/DEV/abhi_github/menubar-battery-indicator/dist/homebrew/Casks/leanbattery.rb Casks/
 cp ~/DEV/abhi_github/menubar-battery-indicator/dist/homebrew/workflows/bump-leanbattery-cask.yml .github/workflows/
-brew audit --cask --new Casks/leanbattery.rb
-brew install --cask ./Casks/leanbattery.rb
 git add Casks/leanbattery.rb .github/workflows/bump-leanbattery-cask.yml
 git commit -m "feat: add LeanBattery cask"
 git push
 ```
 
-**Before that first push**, replace the cask's placeholder —
-`sha256 "REPLACE_WITH_SHA256_OF_PUBLISHED_ZIP"` — with the sha256 of the *published* release asset
-(the `sha256=...` line `scripts/verify-release.sh` prints, or `shasum -a 256` on the zip you
-downloaded from the GitHub release page). Don't reuse a sha256 from a local build: CI builds its own
-zip for the release, and a locally-built one won't match byte-for-byte even from identical source, so
-a locally-computed hash would make `brew install` fail its own checksum. After that first manual fill,
-the bump workflow (`bump-leanbattery-cask.yml`, scheduled daily plus `workflow_dispatch`) overwrites
-both `version` and `sha256` on its own from then on, so this is a one-time step.
+The cask file as committed here carries a placeholder `version "0.1.0"` and
+`sha256 "REPLACE_WITH_SHA256_OF_PUBLISHED_ZIP"` — neither is trustworthy until a real release exists,
+because the real first version is whatever semantic-release actually computed (see "The first
+release" above), not necessarily `0.1.0`. **Do not hand-edit the placeholder as the first step.**
+Once the push above has landed and a GitHub release exists:
 
-Once pushed, `brew install --cask manustays/tools/leanbattery` must install the app from anywhere.
+1. In `manustays/homebrew-tools`, run **`bump-leanbattery-cask.yml`** manually via
+   **Actions → Bump LeanBattery cask → Run workflow** (`workflow_dispatch`). It reads
+   `repos/manustays/lean-battery/releases/latest`, downloads that release's zip, verifies it contains
+   `LeanBattery.app`, and sets **both** `version` and `sha256` on the cask from that real release,
+   then commits and pushes the result itself. This is the normal path for the first tap publish, not
+   just the ones after it — it's the only step that guarantees `version` and `sha256` refer to the
+   same artifact.
+2. `brew audit --cask --new Casks/leanbattery.rb` and `brew install --cask ./Casks/leanbattery.rb`
+   against the result to confirm it installs.
+
+**Fallback, only if the workflow can't run** (e.g. Actions is unavailable): hand-edit both fields
+together — `version` to the released tag with the `v` stripped, and `sha256` to the sha256 of the
+*published* release asset (the `sha256=...` line `scripts/verify-release.sh` prints, or `shasum -a
+256` on the zip downloaded from the GitHub release page). Don't reuse a sha256 from a local build: CI
+builds its own zip for the release, and a locally-built one won't match byte-for-byte even from
+identical source. Never edit `sha256` alone — a `sha256` that matches a different `version`'s asset
+than the `version` field claims sends `brew install` to a 404 or a checksum failure.
+
+After that first fill, one way or the other, the bump workflow (scheduled daily plus
+`workflow_dispatch`) keeps both fields current on its own — the first fill is the only manual step.
+
+Once published, `brew install --cask manustays/tools/leanbattery` must install the app from anywhere.
+
+## The app icon
+
+`Resources/Info.plist` currently has no `CFBundleIconFile` key, so the app ships with the generic
+system icon — there is no `Resources/AppIcon.png` yet to build one from. Dropping a 1024×1024
+`Resources/AppIcon.png` into `Resources/` re-enables the icon automatically: `scripts/make-icon.sh`
+(wired into the Makefile's `app`/`zip` targets) converts it to `.icns` and the app picks it up on the
+next build. At that point, restore `CFBundleIconFile` = `AppIcon` in `Resources/Info.plist`.
 
 ## Manual fallback, when CI is unavailable
 

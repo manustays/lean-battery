@@ -48,6 +48,7 @@ final class UpdateService {
 	/// Runs a check if policy allows one. `manual: true` skips the 24 h cooldown but not a rate limit.
 	func check(manual: Bool) {
 		let now = Date().timeIntervalSince1970
+		status = UpdatePolicy.status(state: state, enabled: isEnabled, currentVersion: installedVersion, now: now)
 		guard UpdatePolicy.shouldCheck(manual: manual, enabled: isEnabled, inFlight: task != nil, state: state, now: now) else { return }
 		status = .checking
 		task = Task { [weak self] in
