@@ -83,9 +83,9 @@ public enum UpdatePolicy {
 	}
 
 	/// What to display for a stored state. Never offers a downgrade, a prerelease, or an off-site URL.
-	public static func status(state: UpdateState, enabled: Bool, currentVersion: String) -> UpdateStatus {
+	public static func status(state: UpdateState, enabled: Bool, currentVersion: String, now: Double) -> UpdateStatus {
 		guard enabled else { return .disabled }
-		if let reset = state.rateLimitReset, reset > (state.lastAttempt ?? 0) { return .failed(reason: "rate limited") }
+		if let reset = state.rateLimitReset, reset > now { return .failed(reason: "rate limited") }
 		guard state.lastSuccess != nil else {
 			return state.lastAttempt == nil ? .idle : .failed(reason: "couldn't reach GitHub")
 		}
