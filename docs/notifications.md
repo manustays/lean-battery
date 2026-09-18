@@ -127,7 +127,7 @@ A visible notification costs the app essentially nothing, which is what the desi
 To hold a notification up long enough to sample, write a duration past the slider's range while the app is quit — it is read from UserDefaults at launch and never clamped — then launch, press **Preview notification**, close the popover, and leave the machine alone:
 
 ```
-defaults write com.manustays.slimbattery notificationDuration -int 150
+defaults write am.abhi.leanbattery notificationDuration -int 150
 ```
 
 Delete the key again afterwards, or the next launch keeps the inflated duration.
@@ -140,7 +140,7 @@ That is far past any real usage — a threshold rule fires a handful of times a 
 
 ### A note on where the cost lands
 
-`scripts/cpu-check.sh` samples the `SlimBattery` process only. The glow's pulse and the notch style's mask are composited by **WindowServer**, so some of their real cost sits in a process these numbers do not include. The spec's bar is mean *app* CPU, so the results above are valid against it, but they are not the whole system cost of showing a notification.
+`scripts/cpu-check.sh` samples the `LeanBattery` process only. The glow's pulse and the notch style's mask are composited by **WindowServer**, so some of their real cost sits in a process these numbers do not include. The spec's bar is mean *app* CPU, so the results above are valid against it, but they are not the whole system cost of showing a notification.
 
 ### Memory
 

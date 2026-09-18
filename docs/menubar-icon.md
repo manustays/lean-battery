@@ -1,6 +1,6 @@
 # Menubar Icon
 
-SlimBattery's menubar item is an upright battery, 11 × 22 pt, drawn in code (no image assets).
+LeanBattery's menubar item is an upright battery, 11 × 22 pt, drawn in code (no image assets).
 
 ## States
 
@@ -38,15 +38,15 @@ Clicking the icon opens the [popover](popover.md).
 
 ## Settings
 
-| Key (`com.manustays.slimbattery`) | Default | Meaning |
+| Key (`am.abhi.leanbattery`) | Default | Meaning |
 |---|---|---|
 | `tempThresholdC` | 40 | Hot badge threshold in °C (set in the popover's Settings) |
 
 ## Build & run
 
 ```sh
-make app                # release build → SlimBattery.app, ad-hoc signed
-open SlimBattery.app
+make app                # release build → LeanBattery.app, ad-hoc signed
+open LeanBattery.app
 make install            # copy to /Applications
 swift test --filter IconRendererTests   # run one test suite
 ```

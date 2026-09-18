@@ -25,13 +25,13 @@ Apps using significant energy over `Now` (5 min), `8h`, `24h` or `7d`. The popov
 
 Two details matter for accuracy:
 
-- **The window is anchored to the log, not the clock.** Powerlog timestamps do not sit on the wall clock, and the difference is not stable enough to correct for. SlimBattery instead measures back from the newest logged moment, which is correct whatever the log's clock is doing. If the log has not been written for more than 15 minutes, the range reads as empty rather than showing stale numbers.
+- **The window is anchored to the log, not the clock.** Powerlog timestamps do not sit on the wall clock, and the difference is not stable enough to correct for. LeanBattery instead measures back from the newest logged moment, which is correct whatever the log's clock is doing. If the log has not been written for more than 15 minutes, the range reads as empty rather than showing stale numbers.
 - **Long activities are counted proportionally.** The log records intervals averaging about 10 minutes — longer than the `Now` window itself. Only the part of each interval falling inside the window is counted, so `Now` is a true 5-minute measure.
 
 `7d` also reads the daily archives: each is decompressed to a temporary file, queried, and deleted. Archives that fall entirely inside the range have their totals cached while the popover stays open, so they are not read again. The one archive straddling the start of the range depends on exactly where the range begins, so its contribution is cached against those precise bounds and reused until they move — and they move only when macOS writes to the log, not on every refresh. In practice most refreshes read nothing but the live log.
 
 ### Battery Information
-Collapsed by default; SlimBattery remembers whether you left it open. Values are read only while the popover is open **and** this section is expanded.
+Collapsed by default; LeanBattery remembers whether you left it open. Values are read only while the popover is open **and** this section is expanded.
 
 | Row | Source |
 |---|---|
@@ -51,7 +51,7 @@ Opened from the footer; replaces the popover content until you press **‹ Back*
 | Launch at login | Off | macOS Login Items (`SMAppService`) |
 | Notifications › | — | See [Notifications](notifications.md) |
 
-Launch at login registers SlimBattery as a login item only when you change the switch. If macOS needs approval, the row says so (System Settings → General → Login Items). If registration is rejected (for example for an unsigned build), SlimBattery writes a LaunchAgent at `~/Library/LaunchAgents/<bundle id>.plist` instead and removes it when you turn the switch off.
+Launch at login registers LeanBattery as a login item only when you change the switch. If macOS needs approval, the row says so (System Settings → General → Login Items). If registration is rejected (for example for an unsigned build), LeanBattery writes a LaunchAgent at `~/Library/LaunchAgents/<bundle id>.plist` instead and removes it when you turn the switch off.
 
 ## CPU behavior
 

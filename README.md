@@ -1,5 +1,5 @@
 <div align="center">
-<h1>SlimBattery</h1>
+<h1>LeanBattery</h1>
 
 > **A battery indicator that doesn't hog your menubar.**
 >
@@ -17,17 +17,17 @@
 
 ## Quick Install
 
-> **Not released yet.** SlimBattery is in active development. Homebrew and download instructions will appear here with the first release. Until then, [build from source](#build-from-source).
+> **Not released yet.** LeanBattery is in active development. Homebrew and download instructions will appear here with the first release. Until then, [build from source](#build-from-source).
 
 ## The problem
 
 The macOS battery icon with a percentage is wide, and on a notched MacBook menubar space is scarce. Many third-party battery apps are wider still, and many poll the system constantly.
 
-**SlimBattery** turns the battery upright: the charge level, charging plug, Low Power Mode and a high-temperature warning all fit in an 11-point-wide icon. It does no polling for battery state — it redraws only when macOS reports a change.
+**LeanBattery** turns the battery upright: the charge level, charging plug, Low Power Mode and a high-temperature warning all fit in an 11-point-wide icon. It does no polling for battery state — it redraws only when macOS reports a change.
 
 ## Efficiency, measured
 
-A battery app that costs you battery is a bad joke. SlimBattery is built to do **nothing at all** until macOS tells it something changed, and the numbers below are from the real app on a real Mac, not estimates.
+A battery app that costs you battery is a bad joke. LeanBattery is built to do **nothing at all** until macOS tells it something changed, and the numbers below are from the real app on a real Mac, not estimates.
 
 | What you're doing | CPU | Idle wakeups | Memory |
 |---|---|---|---|
@@ -44,7 +44,7 @@ A battery app that costs you battery is a bad joke. SlimBattery is built to do *
 - **One lax timer, for temperature only** — 60 s with 30 s tolerance, because battery temperature is the one value macOS has no notification for. The tolerance lets macOS coalesce it with other wakeups instead of waking the CPU on its own.
 - **The popover's timers exist only while it is open.** Close it and they are invalidated. Energy history is read on a background actor, never on the main thread, and each section redraws only when its values actually change.
 - **Notifications cost nothing between events.** No timer, no window, no polling. The pill and glow are created when something fires and destroyed on dismissal, and the glow's pulse is a Core Animation the window server renders — the app does no per-frame work for it.
-- **Energy data is read, not collected.** SlimBattery opens macOS's own power log read-only, only while the popover is open. It stores no history of its own.
+- **Energy data is read, not collected.** LeanBattery opens macOS's own power log read-only, only while the popover is open. It stores no history of its own.
 
 **Measured with** [`scripts/cpu-check.sh`](scripts/cpu-check.sh), which samples once a second via `top` and reports the mean, on an M3 Pro MacBook Pro running macOS 27. Reproduce it yourself:
 
@@ -91,19 +91,19 @@ Numbers are one machine and one configuration; yours will differ. The full metho
 
 ## Permissions & Privacy
 
-- **No special permissions.** SlimBattery reads battery data from public IOKit APIs. It does not need Accessibility, Full Disk Access, or admin rights to run.
-- **Energy history (popover)** comes from macOS's own power log at `/private/var/db/powerlog/Library/BatteryLife/`. The file is readable by all users on the Mac; SlimBattery opens it **read-only** and only while the popover is open.
+- **No special permissions.** LeanBattery reads battery data from public IOKit APIs. It does not need Accessibility, Full Disk Access, or admin rights to run.
+- **Energy history (popover)** comes from macOS's own power log at `/private/var/db/powerlog/Library/BatteryLife/`. The file is readable by all users on the Mac; LeanBattery opens it **read-only** and only while the popover is open.
 - **Low Power Mode toggle** asks for your admin password each time (it runs `pmset`), because macOS requires root to change it.
-- **Update check (planned, optional).** When enabled, SlimBattery asks GitHub for the latest release at most once a day, and only when you open the popover. GitHub sees your IP address and the app version. It never downloads or installs anything, and turning it off in Settings means no network requests at all.
+- **Update check (planned, optional).** When enabled, LeanBattery asks GitHub for the latest release at most once a day, and only when you open the popover. GitHub sees your IP address and the app version. It never downloads or installs anything, and turning it off in Settings means no network requests at all.
 - **Stays on your machine.** Battery and energy data never leave your Mac. No telemetry, no analytics.
 
 ## Build from source
 
 ```bash
-git clone https://github.com/manustays/slimbattery.git
-cd slimbattery
-make app                 # release build → SlimBattery.app (ad-hoc signed)
-open SlimBattery.app     # run it
+git clone https://github.com/manustays/lean-battery.git
+cd leanbattery
+make app                 # release build → LeanBattery.app (ad-hoc signed)
+open LeanBattery.app     # run it
 make install             # copy to /Applications
 ```
 
@@ -115,7 +115,7 @@ swift test --filter IconSpecTests
 swift test --filter IconRendererTests
 ```
 
-> **First launch of a downloaded build.** Builds are not code-signed or notarized yet, so macOS Gatekeeper may block a copy you download. Open **System Settings → Privacy & Security** and click **Open Anyway** next to the SlimBattery message. Builds you make yourself with `make app` open normally.
+> **First launch of a downloaded build.** Builds are not code-signed or notarized yet, so macOS Gatekeeper may block a copy you download. Open **System Settings → Privacy & Security** and click **Open Anyway** next to the LeanBattery message. Builds you make yourself with `make app` open normally.
 
 ## Documentation
 
@@ -127,10 +127,10 @@ swift test --filter IconRendererTests
 
 ## How does it work
 
-SlimBattery is a Swift package with two targets:
+LeanBattery is a Swift package with two targets:
 
-- **`SlimBatteryCore`** — pure logic with unit tests: turning macOS power-source data into a `BatteryState`, deciding what the icon shows, and drawing it with Core Graphics.
-- **`SlimBattery`** — a small AppKit agent app (no Dock icon) that listens for power-source, Low Power Mode and wake notifications and redraws the status item only when what you see would change.
+- **`LeanBatteryCore`** — pure logic with unit tests: turning macOS power-source data into a `BatteryState`, deciding what the icon shows, and drawing it with Core Graphics.
+- **`LeanBattery`** — a small AppKit agent app (no Dock icon) that listens for power-source, Low Power Mode and wake notifications and redraws the status item only when what you see would change.
 
 A 60-second timer with generous tolerance re-reads battery temperature, which has no change notification. Measured idle cost: **0.00% CPU, 0 idle wakeups per minute, 14 MB memory** — see [Efficiency, measured](#efficiency-measured).
 
@@ -145,11 +145,11 @@ A 60-second timer with generous tolerance re-reads battery temperature, which ha
 ## Roadmap
 
 - Popover: battery header, energy by app, Bluetooth batteries, battery information, settings.
-- Releases: Homebrew cask (`brew install --cask manustays/tools/slimbattery`), GitHub Releases, optional notify-only update check.
+- Releases: Homebrew cask (`brew install --cask manustays/tools/leanbattery`), GitHub Releases, optional notify-only update check.
 
 ## Support
 
-SlimBattery is an independent project I build and maintain in my spare time. The best way to support it is to use it, share feedback, and report issues.
+LeanBattery is an independent project I build and maintain in my spare time. The best way to support it is to use it, share feedback, and report issues.
 
 If you'd also like to support my open-source work financially, [GitHub Sponsors](https://github.com/sponsors/manustays) is available.
 

@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-	name: "SlimBattery",
+	name: "LeanBattery",
 	platforms: [.macOS(.v26)],
 	targets: [
-		.target(name: "SlimBatteryCore"),
-		.executableTarget(name: "SlimBattery", dependencies: ["SlimBatteryCore"]),
-		.testTarget(name: "SlimBatteryCoreTests", dependencies: ["SlimBatteryCore"]),
+		.target(name: "LeanBatteryCore"),
+		.executableTarget(name: "LeanBattery", dependencies: ["LeanBatteryCore"]),
+		.testTarget(name: "LeanBatteryCoreTests", dependencies: ["LeanBatteryCore"]),
 	]
 )
