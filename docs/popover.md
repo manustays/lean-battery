@@ -64,6 +64,19 @@ Measured with the popover open on `7d`, the most expensive range: `samples=120 m
 
 Both are inside the 1% budget, but `7d` clears it by only 0.09 points. Anything added to the 5-second refresh path should be re-measured rather than assumed free. Profile before optimising: SQLite is only about 55–60% of the per-tick cost, and the first attempt to speed this up targeted the wrong half.
 
-Measured with the popover closed: `samples=60 mean_cpu=0.00% idle_wakeups_per_min=0.0 memory=14M` (2026-09-17). Working memory rises while the popover is open — around 44M on `7d` — and is released again a couple of minutes after it closes.
+Working memory rises while the popover is open — around 44M on `7d` — and is released again a couple of minutes after it closes.
 
-Re-measured with the popover closed and **update checking on** (Task 8 §10 re-run, spec §13.4): `samples=120 mean_cpu=0.04% idle_wakeups_per_min=0.0 memory=14M` (2026-09-18, `caffeinate -di scripts/cpu-check.sh 120`). Idle wakeups and memory are unchanged from the bar; mean CPU reads 0.04%, not 0.00%. The cause isn't update checking — `UpdateService` only runs from a popover open or the manual "Check now" button, neither of which happened here — it's `BatteryMonitor`'s pre-existing 60 s temperature-poll `Timer` (`Sources/LeanBattery/BatteryMonitor.swift:39`, 30 s tolerance), which runs for the app's lifetime independent of the popover. The earlier 0.00% reading used a 60-sample (1-minute) window, giving that timer at most one chance to fire inside the sample; this 120-sample (2-minute) window gave it two, and the resulting `refresh()` calls (an IOKit power-source read plus an SMC temperature read) are what shows up as 0.04% mean CPU. Recorded as measured, not rounded down.
+**Idle cost, characterised by sampling length (2026-09-18, popover closed, update checking on, `caffeinate -di scripts/cpu-check.sh <n>`):**
+
+| Samples | Length | mean_cpu | idle_wakeups_per_min | memory |
+|---|---|---|---|---|
+| 60 | 1 min | 0.00% | 0.0 | 15M |
+| 600 | 10 min | 0.06% | 0.0 | 15M |
+| 600 | 10 min | 0.08% | 0.0 | 15M |
+| 600 | 10 min | 0.06% | 0.0 | 15M |
+
+(The original 2026-09-17 closed-popover reading — `samples=60 mean_cpu=0.00% idle_wakeups_per_min=0.0 memory=14M` — was a 60-sample/1-minute run, the same length as the first row above, and is superseded by this table.)
+
+**0.00% is not this app's true idle cost — it's an artifact of a 1-minute sampling window.** `BatteryMonitor`'s temperature-poll `Timer` (`Sources/LeanBattery/BatteryMonitor.swift:39`, 60 s interval, 30 s tolerance, runs for the app's lifetime regardless of popover state — long predates the update-check feature) only sometimes lands inside a 60-second sample; when it doesn't, the window reads a clean 0.00%. Every 10-minute run gives it 8-10 chances to fire and consistently lands in the 0.06-0.08% range (mean of the three: **0.07%**). Idle wakeups read 0.0 and memory ~15M at every length tested, so those two figures are solid; mean CPU is the one that depends on how long you sample. `UpdateService` never ran during any of these four runs (it only fires on popover open or "Check now"), so update checking is confirmed to add nothing — the residual cost is entirely the temperature timer.
+
+The honest idle figure to publish is **~0.07% mean CPU / 0 idle wakeups per minute / ~15 MB**, true at a 10-minute sample; a "0.00%" claim is only reproducible at a sample length of about a minute or less and is not representative of steady-state idle cost. Whether to reword the README's "0.00% CPU" claim is the user's call (see `.superpowers/sdd/2026-09-17-leanbattery-plan-4-release/task-8-report.md`).

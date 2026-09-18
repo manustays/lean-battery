@@ -115,10 +115,22 @@ wake itself up, or your Mac, just to ask GitHub a question you haven't asked it 
 
 ## Idle cost
 
-Measured 2026-09-18 with the popover closed and the update-check switch **on**:
-`samples=120 mean_cpu=0.04% idle_wakeups_per_min=0.0 memory=14M`
-(`caffeinate -di scripts/cpu-check.sh 120`; see `docs/popover.md`'s CPU behavior section for the
-full note). Update checking itself adds no idle cost — `check()` only ever runs from a popover open
-or "Check now", and neither fired during this measurement. The 0.04% (idle wakeups and memory are
-still exactly at the bar) traces to `BatteryMonitor`'s unrelated 60 s temperature-poll timer, which
-predates this feature and runs regardless of the update switch.
+Measured 2026-09-18 with the popover closed and the update-check switch **on**
+(`caffeinate -di scripts/cpu-check.sh <n>`; full detail in `docs/popover.md`'s CPU behavior
+section):
+
+| Samples | Length | mean_cpu | idle_wakeups_per_min | memory |
+|---|---|---|---|---|
+| 60 | 1 min | 0.00% | 0.0 | 15M |
+| 600 | 10 min | 0.06% | 0.0 | 15M |
+| 600 | 10 min | 0.08% | 0.0 | 15M |
+| 600 | 10 min | 0.06% | 0.0 | 15M |
+
+Update checking itself adds **zero** idle cost — `check()` only ever runs from a popover open or
+"Check now", and neither fired during any of these four runs. The nonzero mean CPU at the 10-minute
+length (averaging 0.07%) is `BatteryMonitor`'s unrelated 60 s temperature-poll timer, which predates
+this feature and runs regardless of the update switch. It only reads as 0.00% at short (~1-minute)
+sample lengths, because that window is often too short for the 60 s timer to fire even once — that
+is a sampling-window artifact, not a real difference in idle cost. Idle wakeups and memory are
+stable at every length tested. Honest idle figure: **~0.07% mean CPU / 0 idle wakeups per minute /
+~15 MB**, at a 10-minute sample.
