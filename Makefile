@@ -12,7 +12,7 @@ app:
 	cp "$$(swift build -c release --arch arm64 --show-bin-path)/LeanBattery" $(APP)/Contents/MacOS/LeanBattery
 	cp Resources/Info.plist $(APP)/Contents/Info.plist
 	sh scripts/make-icon.sh
-	[ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns $(APP)/Contents/Resources/ || true
+	if [ -f Resources/AppIcon.icns ]; then cp Resources/AppIcon.icns $(APP)/Contents/Resources/; fi
 	codesign --force --sign - $(APP)
 
 ## Copy the bundle to /Applications.
