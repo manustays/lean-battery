@@ -127,10 +127,14 @@ section):
 | 600 | 10 min | 0.06% | 0.0 | 15M |
 
 Update checking itself adds **zero** idle cost — `check()` only ever runs from a popover open or
-"Check now", and neither fired during any of these four runs. The nonzero mean CPU at the 10-minute
-length (averaging 0.07%) is `BatteryMonitor`'s unrelated 60 s temperature-poll timer, which predates
-this feature and runs regardless of the update switch. It only reads as 0.00% at short (~1-minute)
-sample lengths, because that window is often too short for the 60 s timer to fire even once — that
-is a sampling-window artifact, not a real difference in idle cost. Idle wakeups and memory are
-stable at every length tested. Honest idle figure: **~0.07% mean CPU / 0 idle wakeups per minute /
-~15 MB**, at a 10-minute sample.
+"Check now", and neither fired during any of these four runs. The nonzero mean CPU in this session's
+three 10-minute runs (averaging 0.07%) is not update-related: `BatteryMonitor`'s 60 s
+temperature-poll timer is the only timer that runs with the popover closed, so it's almost certainly
+the source — established by reading call sites, not by profiling CPU against fire timestamps, but
+the only timer running is the only candidate. That timer predates this feature and runs regardless
+of the update switch. It read as 0.00% at a short (~1-minute) sample length here, but window length
+alone doesn't determine whether the cost shows up: `docs/menubar-icon.md` records a comparable
+~9.5-minute run (2026-09-15, same timer, present since the project's first commit) that also read
+0.00%, so what varies run to run is macOS timer coalescing, not just how long you sample. Idle
+wakeups and memory were stable at every length tested. Honest idle figure: **~0.07% mean CPU / 0
+idle wakeups per minute / ~15 MB**, as measured in this session's three 10-minute runs.
