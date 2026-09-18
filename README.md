@@ -1,5 +1,5 @@
 <div align="center">
-<h1>LeanBattery</h1>
+<h1><a href="https://abhi.am/lean-battery">LeanBattery</a></h1>
 
 > **A battery indicator that doesn't hog your menubar.**
 >
@@ -10,14 +10,20 @@
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
 <a href="#requirements"><img src="https://img.shields.io/badge/macOS-26+-black.svg" alt="Platform: macOS 26+" /></a>
 <a href="https://www.swift.org"><img src="https://img.shields.io/badge/built%20with-Swift%206-F05138.svg" alt="Built with Swift" /></a>
-<a href="https://abhi.am" target="_blank"><img src="https://img.shields.io/badge/about-me-blue" alt="About Abhishek" /></a>
+<a href="https://abhi.am/lean-battery" target="_blank"><img src="https://img.shields.io/badge/about-me-blue" alt="About Abhishek" /></a>
 <a href="https://github.com/sponsors/manustays"><img src="https://img.shields.io/github/sponsors/manustays?label=Sponsor&logo=githubsponsors" alt="Support my work" /></a>
 
 </div>
 
 ## Quick Install
 
-> **Not released yet.** LeanBattery is in active development. Homebrew and download instructions will appear here with the first release. Until then, [build from source](#build-from-source).
+```sh
+brew install --cask manustays/tools/leanbattery
+```
+
+Or [download the latest zip](https://github.com/manustays/lean-battery/releases/latest), unzip it, and drag `LeanBattery.app` to `/Applications`.
+
+The app is ad-hoc signed, not notarized, so the first launch needs one extra step: right-click the app → **Open** → **Open**. macOS remembers the choice.
 
 ## The problem
 
@@ -94,7 +100,7 @@ Numbers are one machine and one configuration; yours will differ. The full metho
 - **No special permissions.** LeanBattery reads battery data from public IOKit APIs. It does not need Accessibility, Full Disk Access, or admin rights to run.
 - **Energy history (popover)** comes from macOS's own power log at `/private/var/db/powerlog/Library/BatteryLife/`. The file is readable by all users on the Mac; LeanBattery opens it **read-only** and only while the popover is open.
 - **Low Power Mode toggle** asks for your admin password each time (it runs `pmset`), because macOS requires root to change it.
-- **Update check (planned, optional).** When enabled, LeanBattery asks GitHub for the latest release at most once a day, and only when you open the popover. GitHub sees your IP address and the app version. It never downloads or installs anything, and turning it off in Settings means no network requests at all.
+- **Update check (optional, on by default).** When enabled, LeanBattery sends a plain, unauthenticated `GET` to `api.github.com` for the latest release — at most once a day, and only when you open the popover, or when you press **Check now**. The request carries a `LeanBattery/<version>` User-Agent and nothing else: no identifiers, no telemetry, no request body. It never downloads or installs anything. Turning the switch off in Settings means no network requests at all, and cancels one already in flight. Details in [docs/updates.md](docs/updates.md).
 - **Stays on your machine.** Battery and energy data never leave your Mac. No telemetry, no analytics.
 
 ## Build from source
@@ -115,7 +121,7 @@ swift test --filter IconSpecTests
 swift test --filter IconRendererTests
 ```
 
-> **First launch of a downloaded build.** Builds are not code-signed or notarized yet, so macOS Gatekeeper may block a copy you download. Open **System Settings → Privacy & Security** and click **Open Anyway** next to the LeanBattery message. Builds you make yourself with `make app` open normally.
+> **First launch of a downloaded build.** Release zips are ad-hoc signed, not notarized, so macOS Gatekeeper blocks a straight double-click on a copy you downloaded. Right-click the app → **Open** → **Open**; macOS remembers the choice. Builds you make yourself with `make app` open normally — Gatekeeper's quarantine flag is only set on a file that came from outside your Mac.
 
 ## Documentation
 
@@ -124,6 +130,8 @@ swift test --filter IconRendererTests
 | [Menubar icon](docs/menubar-icon.md) | Icon states, how updates are triggered, data sources, settings keys, CPU footprint check |
 | [Popover](docs/popover.md) | Header values and sources, Battery Information, settings, Low Power Mode prompt, CPU behavior |
 | [Notifications](docs/notifications.md) | Rules and firing semantics, the pill and its four styles, the screen-edge glow, storage, CPU behavior |
+| [Updates](docs/updates.md) | Notify-only update check: the request, trigger rules, status strings, storage, the URL guard |
+| [Releases](docs/release.md) | Conventional Commit → version mapping, the release pipeline, `verify-release.sh`'s checks, publishing the Homebrew cask |
 
 ## How does it work
 
@@ -140,12 +148,11 @@ A 60-second timer with generous tolerance re-reads battery temperature, which ha
 - **Macs without a battery** show "—" instead of the icon.
 - **Energy history relies on a private, undocumented macOS database**; a future macOS update may change it (the popover will say so instead of breaking).
 - **Low Power Mode toggle** asks for your admin password every time.
-- **Not code-signed or notarized yet.**
+- **Ad-hoc signed, not notarized** — first launch of a downloaded build needs right-click → Open.
 
 ## Roadmap
 
 - Popover: battery header, energy by app, Bluetooth batteries, battery information, settings.
-- Releases: Homebrew cask (`brew install --cask manustays/tools/leanbattery`), GitHub Releases, optional notify-only update check.
 
 ## Support
 

@@ -1,0 +1,53 @@
+name: Bump LeanBattery cask
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the latest upstream release
+        id: upstream
+        run: |
+          set -euo pipefail
+          tag="$(curl -fsSL -H 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/manustays/lean-battery/releases/latest | jq -r .tag_name)"
+          [ -n "$tag" ] && [ "$tag" != "null" ] || { echo "no release"; exit 1; }
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download and checksum the zip
+        id: artifact
+        run: |
+          set -euo pipefail
+          version="${{ steps.upstream.outputs.version }}"
+          curl -fsSL -o app.zip \
+            "https://github.com/manustays/lean-battery/releases/download/v${version}/LeanBattery-${version}.zip"
+          unzip -Z1 app.zip | grep -q '^LeanBattery.app/' || { echo "zip does not contain LeanBattery.app"; exit 1; }
+          sha="$(sha256sum app.zip | cut -d' ' -f1)"
+          echo "$sha" | grep -Eq '^[0-9a-f]{64}$' || { echo "bad sha256: $sha"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Rewrite the cask
+        run: |
+          set -euo pipefail
+          version="${{ steps.upstream.outputs.version }}"
+          sha="${{ steps.artifact.outputs.sha }}"
+          sed -i -E "s|^  version \".*\"|  version \"${version}\"|" Casks/leanbattery.rb
+          sed -i -E "s|^  sha256 \".*\"|  sha256 \"${sha}\"|" Casks/leanbattery.rb
+
+      - name: Commit if anything changed
+        run: |
+          set -euo pipefail
+          git diff --quiet Casks/leanbattery.rb && { echo "already current"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(leanbattery): bump to ${{ steps.upstream.outputs.version }}"
+          git push
