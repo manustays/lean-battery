@@ -24,6 +24,7 @@ struct PopoverView: View {
 				EnergySection(model: model)
 				Divider()
 				BatteryInfoSection(model: model)
+				UpdateRowView(updates: model.updates)
 				Divider()
 				FooterSection(model: model)
 			}

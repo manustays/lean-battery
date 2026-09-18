@@ -33,6 +33,8 @@ final class PopoverModel {
 	var isShowingNotifications = false
 	/// Notification preferences, shared with the presenter that shows the pill.
 	@ObservationIgnored let notificationSettings: NotificationSettings
+	/// Update checking (spec §13.3). Shared by the popover row and the settings block.
+	@ObservationIgnored let updates: UpdateService
 	private(set) var isChangingLowPowerMode = false
 	private(set) var lowPowerModeMessage: String?
 	private(set) var launchAtLogin: Bool
@@ -66,9 +68,10 @@ final class PopoverModel {
 	@ObservationIgnored private var energyGeneration = 0
 
 	/// Creates the model from persisted settings.
-	init(monitor: BatteryMonitor, notificationSettings: NotificationSettings, onPreviewNotification: @escaping () -> Void) {
+	init(monitor: BatteryMonitor, notificationSettings: NotificationSettings, updates: UpdateService, onPreviewNotification: @escaping () -> Void) {
 		self.monitor = monitor
 		self.notificationSettings = notificationSettings
+		self.updates = updates
 		self.onPreviewNotification = onPreviewNotification
 		isInfoExpanded = UserDefaults.standard.bool(forKey: DefaultsKey.batteryInfoExpanded)
 		hotThresholdCelsius = UserDefaults.standard.double(forKey: DefaultsKey.hotThresholdCelsius)
@@ -86,6 +89,8 @@ final class PopoverModel {
 		launchAtLogin = LoginItem.isEnabled
 		launchAtLoginMessage = LoginItem.statusText
 		refresh()
+		// Popover-open is the only automatic trigger; policy drops it unless the last attempt is ≥ 24 h old.
+		updates.check(manual: false)
 		guard timer == nil else { return }
 		let timer = Timer(timeInterval: 5, repeats: true) { [weak self] _ in
 			guard let self else { return }

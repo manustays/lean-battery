@@ -57,9 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 			self?.popoverModel?.refreshIfVisible()
 			self?.evaluateRules(previous: previous, current: state)
 		}
+		let updates = UpdateService()
 		let popoverModel = PopoverModel(
 			monitor: monitor,
 			notificationSettings: notificationSettings,
+			updates: updates,
 			onPreviewNotification: { notificationPresenter.preview() })
 		// A rule edit must re-arm from the level at edit time, not at the next battery change (spec §6.2).
 		notificationSettings.onRulesChange = { [weak self, weak monitor] rules in

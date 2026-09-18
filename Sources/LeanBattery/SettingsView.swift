@@ -38,6 +38,7 @@ struct SettingsView: View {
 						.foregroundStyle(.secondary)
 				}
 			}
+			UpdateSettingsBlock(model: model)
 			Divider()
 			Button {
 				model.isShowingNotifications = true
