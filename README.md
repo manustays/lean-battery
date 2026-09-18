@@ -23,7 +23,11 @@ brew install --cask manustays/tools/leanbattery
 
 Or [download the latest zip](https://github.com/manustays/lean-battery/releases/latest), unzip it, and drag `LeanBattery.app` to `/Applications`.
 
-The app is ad-hoc signed, not notarized, so the first launch needs one extra step: right-click the app → **Open** → **Open**. macOS remembers the choice.
+**First launch.** LeanBattery is ad-hoc signed, not notarized, so macOS blocks the first launch of a downloaded copy. On macOS 15.1 and later — which covers this app's floor of macOS 26 — Control-click/right-click → Open no longer bypasses this; Apple removed that override for apps that aren't Developer ID–signed and notarized. Instead:
+
+1. Double-click `LeanBattery.app` — macOS blocks it and says it cannot check it for malicious software.
+2. Open **System Settings → Privacy & Security**, scroll to the **Security** section, and click **Open Anyway** next to the LeanBattery message (the button appears only after that first blocked attempt).
+3. Confirm with Touch ID or your password. macOS remembers the choice; later launches are normal.
 
 ## The problem
 
@@ -121,7 +125,7 @@ swift test --filter IconSpecTests
 swift test --filter IconRendererTests
 ```
 
-> **First launch of a downloaded build.** Release zips are ad-hoc signed, not notarized, so macOS Gatekeeper blocks a straight double-click on a copy you downloaded. Right-click the app → **Open** → **Open**; macOS remembers the choice. Builds you make yourself with `make app` open normally — Gatekeeper's quarantine flag is only set on a file that came from outside your Mac.
+> **First launch of a downloaded build.** Same procedure as [Quick Install](#quick-install) above — ad-hoc signed, not notarized, so macOS blocks it until you approve it once via **System Settings → Privacy & Security**. Builds you make yourself with `make app` open normally — Gatekeeper's quarantine flag is only set on a file that came from outside your Mac.
 
 ## Documentation
 
@@ -148,7 +152,7 @@ A 60-second timer with generous tolerance re-reads battery temperature, which ha
 - **Macs without a battery** show "—" instead of the icon.
 - **Energy history relies on a private, undocumented macOS database**; a future macOS update may change it (the popover will say so instead of breaking).
 - **Low Power Mode toggle** asks for your admin password every time.
-- **Ad-hoc signed, not notarized** — first launch of a downloaded build needs right-click → Open.
+- **Ad-hoc signed, not notarized** — first launch of a downloaded build needs one manual approval via System Settings → Privacy & Security (see [Quick Install](#quick-install)).
 
 ## Roadmap
 

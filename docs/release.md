@@ -50,7 +50,7 @@ a user's `brew install` fails or opens the wrong app:
 | `CFBundleIdentifier` is `am.abhi.leanbattery` | A stray build config shipping under the wrong bundle id — breaks the cask's `uninstall launchctl:` and `zap` stanzas, which are hard-coded to this id |
 | `LSMinimumSystemVersion` is `26.0` | The minimum-OS requirement drifting away from what the cask's `depends_on macos:` promises |
 | `lipo -archs` reports exactly `arm64` | An accidental universal or x86_64 slice reaching a cask that only declares `depends_on arch: :arm64` |
-| `codesign --verify --deep --strict` | A corrupt or missing ad-hoc signature — the right-click → Open flow in the README assumes the signature is at least structurally valid, even though it isn't notarized |
+| `codesign --verify --deep --strict` | A corrupt or missing ad-hoc signature — the first-launch approval flow in the README (System Settings → Privacy & Security → Open Anyway) assumes the signature is at least structurally valid, even though it isn't notarized |
 | `dist/LeanBattery-<version>.zip` exists and is non-empty | `make zip` didn't actually write the artifact |
 | The zip is a valid archive (`unzip -l`) | A truncated or corrupted zip |
 | The zip's root entry is exactly `LeanBattery.app` | The cask's `app "LeanBattery.app"` stanza expects the app at the zip's top level, not nested in a folder or alongside stray files |
