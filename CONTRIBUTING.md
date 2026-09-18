@@ -45,11 +45,12 @@ icon, the popover, or a notification — measure it against the CPU bar document
 [Efficiency, measured](README.md#efficiency-measured) before you open the PR, not after review flags it:
 
 ```bash
-scripts/cpu-check.sh 60
+caffeinate -di scripts/cpu-check.sh 600
 ```
 
-The budgets already measured and documented are the ones to stay under: **0.00% CPU / 0 idle
-wakeups** with the popover closed, and roughly **1% mean CPU** with it open (`docs/popover.md`), or
+The budgets already measured and documented are the ones to stay under: **<0.1% CPU / 0 idle
+wakeups** with the popover closed (sample for ten minutes — a one-minute run reads 0.00% because it
+misses the 60 s temperature timer), and roughly **1% mean CPU** with it open (`docs/popover.md`), or
 **under 2% mean CPU** while a notification is on screen (`docs/notifications.md`). Wrap any run you
 can't babysit in `caffeinate -di` — a sample long enough to matter is also long enough for the
 display to sleep, and a wake mid-sample will make your numbers look worse than your change actually

@@ -55,4 +55,4 @@ swift test --filter IconRendererTests   # run one test suite
 
 `scripts/cpu-check.sh [samples]` samples the running app once per second.
 
-Measured: `samples=570 mean_cpu=0.00% idle_wakeups_per_min=0.0 memory=11M` (2026-09-15, popover not yet implemented).
+Measured: `samples=570 mean_cpu=0.00% idle_wakeups_per_min=0.0 memory=11M` (2026-09-15, popover not yet implemented). Later ten-minute runs on the finished app read 0.06-0.08% (see `docs/popover.md`); the 60 s temperature timer is cheap enough that whether it shows up at all depends on how its wakeups coalesce, so treat <0.1% as the honest figure rather than zero.

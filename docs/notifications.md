@@ -114,7 +114,9 @@ Measured 2026-09-17 on the development Mac with `scripts/cpu-check.sh`, notch st
 | Case | Result | Bar |
 |---|---|---|
 | Notification visible, popover closed | `mean_cpu=0.01% idle_wakeups_per_min=0.0 memory=44M` | mean < 2% — **passes** |
-| Nothing showing, popover closed | `mean_cpu=0.00% idle_wakeups_per_min=0.0` | back to the cold-idle baseline — **passes** |
+| Nothing showing, popover closed | `mean_cpu=0.00% idle_wakeups_per_min=0.0` | back to the cold-idle baseline — **passes** ¹ |
+
+¹ That `0.00%` is a short-sample figure. Ten-minute runs on 2026-09-18 put cold idle at <0.1% (`docs/popover.md`); a one-minute window usually misses the 60 s temperature timer. The comparison above still holds — both rows were sampled the same way — but the baseline itself is <0.1%, not zero.
 
 A visible notification costs the app essentially nothing, which is what the design intends: the dismissal timer is one-shot and does not fire inside the sample, the content never changes so nothing redraws, and the glow's pulse belongs to the window server. A *pending* timer does not wake the process, hence zero idle wakeups. The pill was confirmed still on screen when the sampler finished — without that check the figure is indistinguishable from the app sitting idle with no notification at all.
 

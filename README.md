@@ -5,7 +5,7 @@
 >
 > A native macOS menubar app that shows battery level and charging state in an 11-point-wide upright battery — with a popover for per-app energy use and battery health.
 >
-> **0.00% CPU and 0 idle wakeups** while it sits in your menubar. Measured, not claimed — [see the numbers](#efficiency-measured).
+> **<0.1% CPU and 0 idle wakeups** while it sits in your menubar. Measured, not claimed — [see the numbers](#efficiency-measured).
 
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
 <a href="#requirements"><img src="https://img.shields.io/badge/macOS-26+-black.svg" alt="Platform: macOS 26+" /></a>
@@ -41,12 +41,14 @@ A battery app that costs you battery is a bad joke. LeanBattery is built to do *
 
 | What you're doing | CPU | Idle wakeups | Memory |
 |---|---|---|---|
-| **Menubar only** — the 99% case | **0.00%** | **0 / min** | **14 MB** |
+| **Menubar only** — the 99% case | **<0.1%** ² | **0 / min** | **~15 MB** |
 | Notification on screen (pill + glow) | 0.01% | 0 / min | — ¹ |
 | Popover open, `Now` range | 0.81% | — | ~38 MB |
 | Popover open, `7d` range — the heaviest thing it does | 0.91% | 1.0 / min | 44 MB |
 
 ¹ Memory during a notification reads ~44 MB, but that is the popover's working set — you have to open the popover to reach the preview button. It is released a couple of minutes after the popover closes.
+
+² Three 10-minute runs on 2026-09-18 measured 0.06%, 0.08% and 0.06% mean CPU with the popover closed — call it <0.1%. A one-minute sample usually reads 0.00%, because the only thing running is the 60 s temperature timer below and a short window often misses it entirely. Sample for ten minutes if you want the honest number.
 
 **Why it's idle:**
 
@@ -59,7 +61,7 @@ A battery app that costs you battery is a bad joke. LeanBattery is built to do *
 **Measured with** [`scripts/cpu-check.sh`](scripts/cpu-check.sh), which samples once a second via `top` and reports the mean, on an M3 Pro MacBook Pro running macOS 27. Reproduce it yourself:
 
 ```bash
-scripts/cpu-check.sh 60                      # 60 one-second samples
+caffeinate -di scripts/cpu-check.sh 600      # ten minutes: the idle figure above
 (sleep 25; caffeinate -di scripts/cpu-check.sh 120)   # for runs you must not touch
 ```
 
@@ -144,7 +146,7 @@ LeanBattery is a Swift package with two targets:
 - **`LeanBatteryCore`** — pure logic with unit tests: turning macOS power-source data into a `BatteryState`, deciding what the icon shows, and drawing it with Core Graphics.
 - **`LeanBattery`** — a small AppKit agent app (no Dock icon) that listens for power-source, Low Power Mode and wake notifications and redraws the status item only when what you see would change.
 
-A 60-second timer with generous tolerance re-reads battery temperature, which has no change notification. Measured idle cost: **0.00% CPU, 0 idle wakeups per minute, 14 MB memory** — see [Efficiency, measured](#efficiency-measured).
+A 60-second timer with generous tolerance re-reads battery temperature, which has no change notification. Measured idle cost: **<0.1% CPU, 0 idle wakeups per minute, ~15 MB memory** over a ten-minute sample — see [Efficiency, measured](#efficiency-measured).
 
 ## Known limitations
 
