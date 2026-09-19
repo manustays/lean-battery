@@ -1,3 +1,10 @@
+# [0.2.0](https://github.com/manustays/lean-battery/compare/v0.1.0...v0.2.0) (2026-09-19)
+
+
+### Features
+
+* add an app icon ([c654a28](https://github.com/manustays/lean-battery/commit/c654a282a23d2757eef40fca912731b7ed9ce036))
+
 # [0.1.0](https://github.com/manustays/lean-battery/compare/v0.0.0...v0.1.0) (2026-09-18)
 
 
