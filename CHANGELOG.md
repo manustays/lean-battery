@@ -1,3 +1,10 @@
+# [0.3.0](https://github.com/manustays/lean-battery/compare/v0.2.0...v0.3.0) (2026-09-19)
+
+
+### Features
+
+* link macOS battery screens, app site and releases from popover ([d18b767](https://github.com/manustays/lean-battery/commit/d18b7671d2b2e8305a5a2cad59922beef916238f))
+
 # [0.2.0](https://github.com/manustays/lean-battery/compare/v0.1.0...v0.2.0) (2026-09-19)
 
 
