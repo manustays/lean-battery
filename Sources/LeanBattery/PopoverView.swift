@@ -24,6 +24,8 @@ struct PopoverView: View {
 				EnergySection(model: model)
 				Divider()
 				BatteryInfoSection(model: model)
+				Divider()
+				SystemLinksSection()
 				UpdateRowView(updates: model.updates)
 				Divider()
 				FooterSection(model: model)
@@ -154,20 +156,96 @@ private struct BatteryInfoSection: View {
 	}
 }
 
-/// Settings and Quit (spec §5.5).
+/// macOS's own battery screens, one click away.
+private struct SystemLinksSection: View {
+	var body: some View {
+		VStack(alignment: .leading, spacing: 6) {
+			SystemLinkRow(symbol: "bolt.fill", title: "Battery Settings", action: Self.openBatterySettings)
+			SystemLinkRow(symbol: "chart.bar.fill", title: "Activity Monitor · Energy", action: Self.openActivityMonitorEnergy)
+		}
+		.padding(.horizontal, 14)
+		.padding(.vertical, 8)
+	}
+
+	/// System Settings › Battery.
+	private static func openBatterySettings() {
+		guard let url = URL(string: "x-apple.systempreferences:com.apple.Battery-Settings.extension") else { return }
+		NSWorkspace.shared.open(url)
+	}
+
+	/// Activity Monitor on its Energy tab.
+	private static func openActivityMonitorEnergy() {
+		// ponytail: Activity Monitor takes no deep link — it reopens whichever tab it last showed. Setting that
+		// preference (2 = Energy) lands on the right tab whenever it is not already running; if it is, it simply
+		// comes forward on the tab the user left it on. Choosing the tab in a running app would need Accessibility.
+		UserDefaults(suiteName: "com.apple.ActivityMonitor")?.set(2, forKey: "SelectedTab")
+		let url = URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app")
+		NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+	}
+}
+
+/// One tappable row pointing at a macOS screen.
+private struct SystemLinkRow: View {
+	let symbol: String
+	let title: String
+	let action: () -> Void
+
+	var body: some View {
+		Button(action: action) {
+			HStack(spacing: 6) {
+				Image(systemName: symbol)
+					.font(.system(size: 10))
+					.foregroundStyle(.secondary)
+					.frame(width: 14)
+				Text(title)
+				Spacer()
+				Image(systemName: "arrow.up.forward")
+					.font(.system(size: 9))
+					.foregroundStyle(.tertiary)
+			}
+			.contentShape(.rect)
+		}
+		.buttonStyle(.plain)
+	}
+}
+
+/// App name and version on the left, Settings and Quit on the right (spec §5.5).
 private struct FooterSection: View {
 	let model: PopoverModel
 
+	/// `CFBundleName`, so the footer never drifts from the bundle.
+	private static let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "LeanBattery"
+	private static let homepage = URL(string: "https://abhi.am/lean-battery")
+	private static let releases = URL(string: UpdatePolicy.releasePrefix)
+
 	var body: some View {
-		HStack {
-			Button("Settings") { model.isShowingSettings = true }
+		HStack(spacing: 6) {
+			Button(Self.appName) { Self.open(Self.homepage) }
+				.help("Open the LeanBattery home page")
+			Button("v\(model.updates.installedVersion)") { Self.open(Self.releases) }
+				.monospacedDigit()
+				.foregroundStyle(.tertiary)
+				.help("Releases and changelog on GitHub")
 			Spacer()
-			Button("Quit") { NSApplication.shared.terminate(nil) }
+			Button { model.isShowingSettings = true } label: {
+				Label("Settings", systemImage: "gearshape")
+			}
+			Button { NSApplication.shared.terminate(nil) } label: {
+				Label("Quit", systemImage: "power")
+			}
+			.padding(.leading, 6)
 		}
+		.labelStyle(.titleAndIcon)
 		.buttonStyle(.plain)
 		.foregroundStyle(.secondary)
 		.padding(.horizontal, 14)
 		.padding(.vertical, 8)
+	}
+
+	/// Opens a link, ignoring the impossible nil.
+	private static func open(_ url: URL?) {
+		guard let url else { return }
+		NSWorkspace.shared.open(url)
 	}
 }
 

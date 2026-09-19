@@ -42,6 +42,19 @@ Collapsed by default; LeanBattery remembers whether you left it open. Values are
 | Voltage | `Voltage` (mV → V) |
 | Adapter | `AdapterDetails.Watts`, or `—` on battery |
 
+### macOS battery screens
+Two links under Battery Information open macOS's own screens:
+
+| Link | Opens |
+|---|---|
+| Battery Settings | System Settings › Battery (`x-apple.systempreferences:com.apple.Battery-Settings.extension`) |
+| Activity Monitor · Energy | `/System/Applications/Utilities/Activity Monitor.app` |
+
+Activity Monitor takes no deep link — it reopens whichever tab it last showed — so LeanBattery writes its `SelectedTab` preference (`2` = Energy) before launching it. That lands on the Energy tab when Activity Monitor is not already running; if it is, it just comes forward on the tab you left it on.
+
+### Footer
+App name and version on the left, **Settings** and **Quit** on the right. The name opens <https://abhi.am/lean-battery>; the version opens the GitHub releases page (changelog).
+
 ### Settings
 Opened from the footer; replaces the popover content until you press **‹ Back** or close the popover.
 

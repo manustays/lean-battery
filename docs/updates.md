@@ -36,7 +36,9 @@ second one from starting.
 
 The popover shows an update row only when a newer version is actually on offer:
 
-> `Update available: v<version>`  — **Download** / **Homebrew** / ✕
+> ⬇︎ `v<version> available`  — **Download** / **Homebrew** / ✕
+
+The row sits on an accent-tinted band so it reads as an offer rather than another data row, and the version is laid out at its natural width so it is never truncated.
 
 The settings block always shows one line, driven by `UpdateStatus`:
 

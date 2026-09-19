@@ -10,12 +10,18 @@ struct UpdateRowView: View {
 			VStack(spacing: 0) {
 				Divider()
 				HStack(spacing: 8) {
-					Text("Update available: v\(version)")
-						.lineLimit(1)
+					Image(systemName: "arrow.down.circle.fill")
+						.foregroundStyle(Color.accentColor)
+					Text("v\(version) available")
+						.fontWeight(.medium)
+						.foregroundStyle(.primary)
+						.fixedSize()                                 // the version is the point of the row: never truncate it
 					Spacer(minLength: 4)
 					Button("Download") { updates.openDownloadPage() }
+						.fontWeight(.medium)
+						.foregroundStyle(Color.accentColor)
 					Button("Homebrew") { updates.copyBrewCommand() }
-						.help("Copies “\(UpdateService.brewCommand)”. The tap follows a release within about a day.")
+						.help("Copies \u{201C}\(UpdateService.brewCommand)\u{201D}. The tap follows a release within about a day.")
 					Button {
 						updates.dismissCurrentOffer()
 					} label: {
@@ -27,7 +33,8 @@ struct UpdateRowView: View {
 				.buttonStyle(.plain)
 				.foregroundStyle(.secondary)
 				.padding(.horizontal, 14)
-				.padding(.vertical, 6)
+				.padding(.vertical, 7)
+				.background(Color.accentColor.opacity(0.14))
 			}
 		}
 	}
